@@ -27,6 +27,9 @@
     "string-similarity-js": "^2.1.4",
     "twitter-api-v2": "^1.17.0"
   },
+  "engines": {
+    "node": ">=20"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/node-cron": "^3.0.0",
