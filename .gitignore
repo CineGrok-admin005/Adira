@@ -2,9 +2,10 @@
 node_modules/
 dist/
 *.log
+Gemini_Generated_Image_*.png
 
-# Keep ARIA's avatar in the repo
-!assets/aria-avatar.png
+# Keep ADIRA's avatar in the repo
+!assets/adira-avatar.png
 
 # data/ — keep folder but all runtime state is gitignored
 data/aria-memory.json

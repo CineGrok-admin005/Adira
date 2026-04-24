@@ -25,7 +25,7 @@ export async function sendDraftToFounder(posts: GeneratedPosts): Promise<void> {
   const time = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
   // Message 1: header
-  await send(chatId, `🎙️ *ARIA — CineGrok Daily Report*\n_Audience: ${audience} | ${time}_\n_Milestone: ${posts.milestoneMessage}_`);
+  await send(chatId, `🎙️ *ADIRA — CineGrok Daily Report*\n_Audience: ${audience} | ${time}_\n_Milestone: ${posts.milestoneMessage}_`);
 
   // Message 2-4: one per platform (easy to copy individually on mobile)
   await send(chatId, `📸 *INSTAGRAM*\n\n${posts.instagram}`);
@@ -46,7 +46,7 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
 
   // Message 1: header + source story
   await bot.sendMessage(chatId,
-    `🎙️ <b>ARIA — Commentary Post</b>\n<i>Audience: ${audience} | ${time}</i>\n\n🔗 <b>SOURCE STORY</b>\n"${h(post.sourceStory.title)}"\n${post.sourceStory.url}\n<i>Also covered by: ${h(sources)}</i>`,
+    `🎙️ <b>ADIRA — Commentary Post</b>\n<i>Audience: ${audience} | ${time}</i>\n\n🔗 <b>SOURCE STORY</b>\n"${h(post.sourceStory.title)}"\n${post.sourceStory.url}\n<i>Also covered by: ${h(sources)}</i>`,
     { parse_mode: 'HTML' }
   );
 
@@ -67,11 +67,11 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
 export async function sendIntroductionToFounder(posts: GeneratedPosts): Promise<void> {
   const chatId = process.env.TELEGRAM_CHAT_ID!;
 
-  await send(chatId, `🎙️ *ARIA — Launch Post*\n_This is ARIA's first post\\. Review and publish manually on all platforms\\._\n_After posting, set ARIA\\_INTRODUCED=true in \\.env_`);
+  await send(chatId, `🎙️ *ADIRA — Launch Post*\n_This is ADIRA's first post\\. Review and publish manually on all platforms\\._\n_After posting, set ADIRA\\_INTRODUCED=true in \\.env_`);
   await send(chatId, `📸 *INSTAGRAM*\n\n${posts.instagram}`);
   await send(chatId, `💼 *LINKEDIN*\n\n${posts.linkedin}`);
   await send(chatId, `🐦 *TWITTER / X*\n\n${posts.twitter}`);
   await send(chatId, `🎨 *IMAGE PROMPT* — ${posts.imageStyle}\n\n${posts.imagePrompt}`);
 
-  console.log('✅ ARIA launch post sent to Telegram');
+  console.log('✅ ADIRA launch post sent to Telegram');
 }

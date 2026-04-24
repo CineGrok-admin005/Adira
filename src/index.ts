@@ -49,7 +49,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     const safeData = sanitizeForPublic(rawData);
 
     if (dryRun) {
-      console.log('\n📋 PRIVACY AUDIT — exact JSON being sent to ARIA:');
+      console.log('\n📋 PRIVACY AUDIT — exact JSON being sent to ADIRA:');
       console.log('──────────────────────────────────────────────────');
       console.log(JSON.stringify(safeData, null, 2));
       console.log('──────────────────────────────────────────────────\n');
@@ -66,8 +66,8 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
 
     console.log(`🎉 Milestone: [${milestone.type}] ${milestone.message}`);
 
-    // ── STEP 4: Generate posts via ARIA ──
-    console.log('✍️  ARIA is writing posts...');
+    // ── STEP 4: Generate posts via ADIRA ──
+    console.log('✍️  ADIRA is writing posts...');
     const posts = await generatePosts(milestone);
     console.log(`   Audience: ${posts.audience} | Image style: ${posts.imageStyle}`);
 
@@ -110,7 +110,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
       catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
     }
 
-    console.log('✅ ARIA completed successfully!');
+    console.log('✅ ADIRA completed successfully!');
 
   } catch (error) {
     console.error('❌ Growth Agent error:', error);
@@ -119,10 +119,10 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
 
 export async function runIntroduction(): Promise<void> {
   try {
-    console.log('🎙️  Sending ARIA\'s introduction post to Telegram...');
+    console.log('🎙️  Sending ADIRA\'s introduction post to Telegram...');
     const posts = getIntroductionPosts();
     await sendIntroductionToFounder(posts);
-    console.log('✅ Introduction sent! Set ARIA_INTRODUCED=true in .env after you post it live.');
+    console.log('✅ Introduction sent! Set ADIRA_INTRODUCED=true in .env after you post it live.');
   } catch (error) {
     console.error('❌ Introduction error:', error);
   }
@@ -147,11 +147,11 @@ export async function runCommentaryAgent(): Promise<void> {
       return;
     }
 
-    console.log('✍️  ARIA is writing commentary...');
+    console.log('✍️  ADIRA is writing commentary...');
     const post = await generateCommentary(stories);
 
     if (!post) {
-      console.log('💤 ARIA skipped — no story worth commenting on today.');
+      console.log('💤 ADIRA skipped — no story worth commenting on today.');
       return;
     }
 

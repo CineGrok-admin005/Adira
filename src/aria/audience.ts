@@ -6,7 +6,7 @@ const SCHEDULE: Record<number, AudienceMode> = {
 };
 
 export function getAudienceMode(): AudienceMode {
-  const override = process.env.ARIA_AUDIENCE_OVERRIDE?.toLowerCase().trim();
+  const override = process.env.ADIRA_AUDIENCE_OVERRIDE?.toLowerCase().trim();
   if (override === 'filmmaker' || override === 'industry' || override === 'general') {
     console.log(`   Audience mode: ${override} (manual override)`);
     return override;

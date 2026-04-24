@@ -3,7 +3,7 @@
 // The prompt structure (system + user) works identically on both.
 import Groq from 'groq-sdk';
 import { MilestoneEvent, GeneratedPosts } from '../types';
-import { ARIA_SYSTEM_PROMPT } from '../aria/characterCard';
+import { ADIRA_SYSTEM_PROMPT } from '../aria/characterCard';
 import { readMemory, writeMemory, formatMemoryContext } from '../aria/memory';
 import { getAudienceMode, audienceContext } from '../aria/audience';
 import dotenv from 'dotenv';
@@ -63,7 +63,7 @@ Format EXACTLY as follows (keep all labels):
 <Pick one: Cinematic / Moody / Surreal — based on today's tone>
 
 RULES:
-- Every post ends with: — ARIA, CineGrok
+- Every post ends with: — ADIRA, CineGrok
 - Never mention emails, phone numbers, user IDs, or internal data
 - Never use full names — first name only
 - Never say: thrilled, excited, proud to announce, journey, ecosystem, game-changer, struggling
@@ -73,7 +73,7 @@ RULES:
     model: 'llama-3.3-70b-versatile',
     max_tokens: 2000,
     messages: [
-      { role: 'system', content: ARIA_SYSTEM_PROMPT },
+      { role: 'system', content: ADIRA_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ],
   });
@@ -92,8 +92,8 @@ RULES:
   const linkedTone  = text.match(/\[LINKEDIN\]\n\[TONE:\s*([^\]]+)\]/)?.[1]?.trim() ?? 'unknown';
   const twitterTone = text.match(/\[TWITTER\]\n\[TONE:\s*([^\]]+)\]/)?.[1]?.trim() ?? 'unknown';
 
-  const SIG = '\n\n— ARIA, CineGrok';
-  const addSig = (t: string) => t.includes('— ARIA, CineGrok') ? t : t + SIG;
+  const SIG = '\n\n— ADIRA, CineGrok';
+  const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
 
   const instagram = addSig(instagramMatch?.[1]?.trim() ?? 'Could not generate Instagram post');
   const linkedin  = addSig(linkedinMatch?.[1]?.trim()  ?? 'Could not generate LinkedIn post');

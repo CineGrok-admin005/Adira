@@ -2,7 +2,7 @@ import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { ARIA_SYSTEM_PROMPT } from '../aria/characterCard';
+import { ADIRA_SYSTEM_PROMPT } from '../aria/characterCard';
 import { readMemory, writeMemory } from '../aria/memory';
 import { getAudienceMode, audienceContext } from '../aria/audience';
 import { VerifiedStory, CommentaryPost } from '../types';
@@ -77,7 +77,7 @@ One of: Cinematic / Moody / Surreal`;
     model: 'llama-3.3-70b-versatile',
     max_tokens: 1200,
     messages: [
-      { role: 'system', content: ARIA_SYSTEM_PROMPT },
+      { role: 'system', content: ADIRA_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ],
   });
@@ -97,8 +97,8 @@ One of: Cinematic / Moody / Surreal`;
   const imagePromptMatch = text.match(/\[IMAGE_PROMPT\]\s*([\s\S]*?)(?=\[IMAGE_STYLE\])/);
   const imageStyleMatch  = text.match(/\[IMAGE_STYLE\]\s*(Cinematic|Moody|Surreal)/);
 
-  const SIG = '\n\n— ARIA, CineGrok';
-  const addSig = (t: string) => t.includes('— ARIA, CineGrok') ? t : t + SIG;
+  const SIG = '\n\n— ADIRA, CineGrok';
+  const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
 
   const instagram = addSig(instagramMatch?.[1]?.trim() ?? '');
   const linkedin  = addSig(linkedinMatch?.[1]?.trim()  ?? '');
