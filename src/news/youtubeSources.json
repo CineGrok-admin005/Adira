@@ -1,0 +1,16 @@
+{
+  "channels": [
+    { "handle": "NetflixIndiaOfficial",      "category": "ott",        "note": "OTT commissioning signals — trailers, originals, BTS" },
+    { "handle": "PrimeVideoIN",              "category": "ott",        "note": "Amazon Prime India originals and slate announcements" },
+    { "handle": "excelmovies",               "category": "production", "note": "Excel Entertainment — Farhan Akhtar / Ritesh Sidhwani, known for backing real writers" },
+    { "handle": "HombaleFilms",              "category": "production", "note": "KGF / Salaar studio — benchmark Pan-India films, regional cinema at scale" },
+    { "handle": "NFDCIndia",                 "category": "industry",   "note": "NFDC — government schemes, Film Bazaar, National Film Awards" },
+    { "handle": "MAMIMumbaiFilmFestival",    "category": "industry",   "note": "MAMI — indie and debut film selections, masterclasses" },
+    { "handle": "FilmCompanionStudios",      "category": "press",      "note": "Anupama Chopra — deep filmmaker career-journey interviews, daily" },
+    { "handle": "FilmCompanionSouth",        "category": "press",      "note": "South Indian directors/producers — Pan-India industry coverage" },
+    { "handle": "GalattaPlus",               "category": "press",      "note": "Baradwaj Rangan — technical masterclasses, roundtables across all Indian cinema" },
+    { "handle": "HollywoodReporterIndia",    "category": "press",      "note": "OTT commissioning and global distribution structural shifts" },
+    { "handle": "TriedRefusedProductions",   "category": "press",      "note": "Box office analysis and benchmark film deep dives — what gets made and why" },
+    { "handle": "LallantopCinema",           "category": "press",      "note": "Long-form interviews on the grassroots journeys of newcomers" }
+  ]
+}

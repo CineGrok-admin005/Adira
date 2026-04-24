@@ -1,0 +1,12 @@
+.env
+node_modules/
+dist/
+*.log
+
+# Keep ARIA's avatar in the repo
+!assets/aria-avatar.png
+
+# data/ — keep folder but all runtime state is gitignored
+data/aria-memory.json
+data/youtube-channel-cache.json
+data/news-cache.json

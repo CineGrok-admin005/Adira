@@ -1,0 +1,37 @@
+{
+  "name": "cinegrok-growth-agent",
+  "version": "1.0.0",
+  "description": "Automated growth posting agent for CineGrok",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "test:run": "ts-node src/index.ts --test",
+    "dry-run": "ts-node src/index.ts --dry-run",
+    "test:telegram": "ts-node src/index.ts --test --test-milestone",
+    "test:twitter": "ts-node src/scripts/test-twitter.ts",
+    "test:linkedin": "ts-node src/scripts/test-linkedin.ts",
+    "introduce": "ts-node src/index.ts --introduce",
+    "test:commentary": "ts-node src/index.ts --commentary"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.20.0",
+    "@supabase/supabase-js": "^2.39.0",
+    "axios": "^1.6.0",
+    "dotenv": "^16.3.1",
+    "fast-xml-parser": "^5.7.1",
+    "groq-sdk": "^1.1.2",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.65.1",
+    "string-similarity-js": "^2.1.4",
+    "twitter-api-v2": "^1.17.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.0",
+    "@types/node-telegram-bot-api": "^0.64.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0"
+  }
+}
