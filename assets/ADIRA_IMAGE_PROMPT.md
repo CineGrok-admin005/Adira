@@ -3,7 +3,7 @@
 
 ---
 
-## WHO SHE IS (read this first)
+## WHO SHE IS
 
 ADIRA is the AI reporter for CineGrok — India's platform for emerging filmmakers. She covers the ones still becoming: actors between auditions, directors on their first short, cinematographers building their first reel. She is sharp, warm, and always has a point of view.
 
@@ -11,114 +11,298 @@ She is not a celebrity. She is not a brand mascot. She is a journalist who chose
 
 ---
 
-## HER FIXED IDENTITY — NEVER CHANGE THESE
+## COPY-PASTE PROMPT — fill in the brackets, delete what doesn't apply
 
-These stay consistent across every single image, regardless of the post topic:
+```
+[ADIRA_VISUAL_REQUEST]
 
-- **Face**: The exact face from the reference image I am uploading. Match it precisely.
-- **Ethnicity**: Indian woman, mid-20s
-- **Art style**: Editorial illustration — graphic novel meets Indian cinema poster. Not photorealistic. Not cartoon. Somewhere between.
-- **Press badge**: Always visible on her person — reads **"ADIRA / CineGrok"** in clean type
-- **Expression**: Intelligent, observant, slightly knowing. Never overly happy. Never blank. She looks like she's about to say something worth hearing.
-- **Eyes**: Attentive. Always looking at something with intention — a screen, a viewfinder, the horizon, the reader.
+POST CATEGORY:
+[ Milestone / Commentary / News / Community / Industry Reaction / Update ]
+
+WHAT HAPPENED:
+[ Describe the event, news, or update in 1-2 sentences ]
+
+WHY THIS MATTERS:
+[ What does this mean for emerging filmmakers? ]
+
+SHOULD ADIRA BE IN THIS?
+[ Yes / No ]
+
+IF YES:
+
+ADIRA'S ROLE:
+[ Reporting / Reacting / Observing / Investigating / Announcing ]
+
+SCENE:
+[ Describe the environment — film set, edit suite, festival press row, rooftop, theatre ]
+
+ACTION:
+[ What is she doing — writing in notebook, watching a screen, standing at press row, looking at horizon ]
+
+EXPRESSION:
+[ Focused / Reflective / Sharp / Curious / Concerned ]
+
+WARDROBE:
+[ Kurta with press lanyard / Blazer at industry event / Casual denim on a film set / Saree at a festival ]
+
+PROPS:
+[ Notebook / Phone / Mic / Camera / Film reel / Laptop / Press lanyard reading "ADIRA / CineGrok" ]
+
+LIGHTING:
+[ Golden hour / Single desk lamp / Screen glow / Festival footlights / Neon city ]
+
+MOOD:
+[ Excited / Serious / Reflective / Intense ]
 
 ---
 
-## WHAT CAN CHANGE POST TO POST
+STRICT CHARACTER LOCK:
+Use the uploaded ADIRA reference image.
+Treat ADIRA as a persistent character — same person, every image.
+Do not redesign face.
+Do not reinterpret facial anatomy.
+Preserve exact identity.
 
-These adapt to the mood and context of each post:
+CAN CHANGE:
+Clothes, hairstyle, pose, environment, lighting, props
 
-| Element | Examples |
-|---|---|
-| **Setting** | Film set, edit suite, press row at a festival, rooftop in a city at dusk, inside a theatre, behind a camera |
-| **Attire** | Kurta with a press lanyard, denim jacket with a notebook, formal wear at a festival, casual on a film set |
-| **Lighting** | Golden hour, single desk lamp, festival footlights, dark edit suite with screen glow |
-| **Mood** | Focused and still, mid-thought, mid-conversation, watching something unfold |
-| **Time of day** | Morning on a film set, late night in an edit suite, afternoon at a press event |
-| **Props** | Notebook, pen, phone, camera, film reel, festival lanyard, clapperboard in background |
-
----
-
-## HOW TO USE THIS
-
-Each time you need an image, paste the full block below into ChatGPT and fill in the `[POST CONTEXT]` section. Always upload `adira-avatar.png` in the same message.
+CANNOT CHANGE:
+Face structure, eyes, jawline, skin tone, core identity
 
 ---
 
-## COPY-PASTE PROMPT BLOCK
+STYLE:
+Editorial illustration
+Graphic novel × Indian cinema poster
+Not photorealistic. Not cartoon.
 
-```
-I am uploading a reference image of ADIRA — an illustrated Indian woman in her mid-20s who is the AI reporter for CineGrok, India's platform for emerging filmmakers. 
-
-STRICT REQUIREMENT: Match her face exactly from the reference image. Same features, same bone structure, same eyes. This is a consistent character across many images — her face must never drift.
-
-Fixed elements to preserve in every image:
-- Her exact face from the reference photo
-- Editorial illustration style (not photorealistic, not cartoon — graphic novel meets Indian cinema poster)
-- A visible press badge or lanyard reading "ADIRA / CineGrok"
-- Intelligent, observant expression — she looks like she's about to say something worth hearing
-
-For this specific image:
-[POST CONTEXT — describe the mood, setting, and what this post is about]
-
-Adapt these for this image:
-- Setting: [e.g. dark edit suite with a single screen glowing, festival red carpet from press row, rooftop at golden hour]
-- Attire: [e.g. casual kurta with press lanyard, denim jacket with notebook in hand]
-- Lighting: [e.g. warm single desk lamp, cool blue screen glow, golden sunset light]
-- Mood: [e.g. focused and still, mid-thought looking at camera, watching something unfold off-frame]
-
-Image format: Square (1:1), cinematic composition, rich colours, editorial quality.
-Do not add any text or captions to the image.
-```
-
----
-
-## EXAMPLE FILLED PROMPTS
-
-### For a growth milestone post (new filmmakers joining)
-```
-[POST CONTEXT]
-ADIRA is reporting on a new milestone — more filmmakers just joined CineGrok from cities 
-nobody expected. The feeling is quiet excitement. She's watching a map or a screen showing 
-new names, cities, faces lighting up.
-
-Setting: A dimly lit room with a large screen showing a map of India with glowing dots 
-appearing across smaller cities — Nagpur, Surat, Patna. She stands to one side watching it.
-Attire: Smart-casual — dark kurta, press lanyard with ADIRA / CineGrok badge.
-Lighting: Screen glow in a dark room, warm and slightly blue.
-Mood: Still and focused, the look of someone watching something important happen quietly.
-```
-
-### For an industry commentary post (OTT announcement, benchmark film)
-```
-[POST CONTEXT]
-ADIRA is reacting to a big industry decision — an OTT platform announced a new slate 
-favouring regional cinema. She has an opinion. The feeling is sharp and slightly charged.
-
-Setting: Press row at an industry event — rows of chairs, a stage in the background with 
-soft lights. She's not on stage. She's in the audience with a notebook, already writing.
-Attire: Formal — blazer over a fitted top, press badge prominently displayed.
-Lighting: Event lighting — soft footlights from below, slight flash from a distance.
-Mood: Alert, mid-note, the look of someone who just heard something they have thoughts about.
-```
-
-### For a quiet/poetic post (slow day, reflective tone)
-```
-[POST CONTEXT]
-ADIRA is writing a quiet post about the ones who are building before anyone is watching. 
-The mood is reflective, cinematic, still.
-
-Setting: Rooftop at dusk — a city skyline in the background, golden hour light, a notebook 
-open in her hands, she's looking at the horizon not the page.
-Attire: Casual — light kurta, hair down, press badge tucked but visible.
-Lighting: Warm golden sunset, long shadows, soft and cinematic.
-Mood: Contemplative, at peace, like someone who chose this beat on purpose and is glad they did.
+FORMAT:
+Square 1:1
+No text or captions in the image
+Cinematic composition
+High detail
 ```
 
 ---
 
-## NOTES FOR LONG-TERM CONSISTENCY
+## EXAMPLES
 
-- Save every approved image. When requesting the next one, you can also upload a previous approved image alongside the avatar — more reference points = more consistent face.
-- If the face starts to drift across generations of images, re-anchor by uploading both the original avatar AND the most recent approved image together.
-- The press badge is her constant. If nothing else is recognisable, the badge should always anchor who she is.
+### Milestone — new filmmakers joining from unexpected cities
+```
+[ADIRA_VISUAL_REQUEST]
+
+POST CATEGORY:
+Milestone
+
+WHAT HAPPENED:
+CineGrok crossed a new signup milestone. Filmmakers joined from cities nobody expected — Nagpur, Surat, Patna lighting up the map.
+
+WHY THIS MATTERS:
+The industry only watches a few cities. This proves the talent is everywhere else.
+
+SHOULD ADIRA BE IN THIS?
+Yes
+
+ADIRA'S ROLE:
+Reporting
+
+SCENE:
+A dimly lit room with a large screen showing a map of India — small dots of light appearing across unexpected cities.
+
+ACTION:
+Standing to the side, watching the map quietly, notebook in hand.
+
+EXPRESSION:
+Focused
+
+WARDROBE:
+Dark kurta, press lanyard with "ADIRA / CineGrok" badge visible.
+
+PROPS:
+Notebook, glowing map screen in background.
+
+LIGHTING:
+Screen glow — cool blue light in a dark room, warm press badge catching the light.
+
+MOOD:
+Serious
+
+---
+
+STRICT CHARACTER LOCK:
+Use the uploaded ADIRA reference image.
+Treat ADIRA as a persistent character — same person, every image.
+Do not redesign face.
+Do not reinterpret facial anatomy.
+Preserve exact identity.
+
+CAN CHANGE:
+Clothes, hairstyle, pose, environment, lighting, props
+
+CANNOT CHANGE:
+Face structure, eyes, jawline, skin tone, core identity
+
+---
+
+STYLE:
+Editorial illustration
+Graphic novel × Indian cinema poster
+Not photorealistic. Not cartoon.
+
+FORMAT:
+Square 1:1
+No text or captions in the image
+Cinematic composition
+High detail
+```
+
+---
+
+### Industry Reaction — OTT platform announces regional content push
+```
+[ADIRA_VISUAL_REQUEST]
+
+POST CATEGORY:
+Industry Reaction
+
+WHAT HAPPENED:
+A major OTT platform announced a new slate heavily favouring regional language originals.
+
+WHY THIS MATTERS:
+This is a direct signal to emerging filmmakers — the buyer has changed what they want. If you're building a pitch deck right now, this matters.
+
+SHOULD ADIRA BE IN THIS?
+Yes
+
+ADIRA'S ROLE:
+Reacting
+
+SCENE:
+Press row at an industry event — rows of seats, a lit stage in the background, other journalists visible but out of focus.
+
+ACTION:
+Mid-note in her notebook, pen moving, eyes sharp — she just heard something she has thoughts about.
+
+EXPRESSION:
+Sharp
+
+WARDROBE:
+Blazer over fitted top, press badge prominently visible, formal but not stiff.
+
+PROPS:
+Notebook, pen, press lanyard.
+
+LIGHTING:
+Event lighting — soft footlights from the stage, slight flash from a distance.
+
+MOOD:
+Intense
+
+---
+
+STRICT CHARACTER LOCK:
+Use the uploaded ADIRA reference image.
+Treat ADIRA as a persistent character — same person, every image.
+Do not redesign face.
+Do not reinterpret facial anatomy.
+Preserve exact identity.
+
+CAN CHANGE:
+Clothes, hairstyle, pose, environment, lighting, props
+
+CANNOT CHANGE:
+Face structure, eyes, jawline, skin tone, core identity
+
+---
+
+STYLE:
+Editorial illustration
+Graphic novel × Indian cinema poster
+Not photorealistic. Not cartoon.
+
+FORMAT:
+Square 1:1
+No text or captions in the image
+Cinematic composition
+High detail
+```
+
+---
+
+### Community — quiet/reflective post about the ones still building
+```
+[ADIRA_VISUAL_REQUEST]
+
+POST CATEGORY:
+Community
+
+WHAT HAPPENED:
+No single event. ADIRA is writing about the filmmakers who are building before anyone is watching.
+
+WHY THIS MATTERS:
+The beginning is the hardest part and gets the least respect. Someone should say so.
+
+SHOULD ADIRA BE IN THIS?
+Yes
+
+ADIRA'S ROLE:
+Observing
+
+SCENE:
+Rooftop at golden hour — a city skyline in the background, notebook open in her hands, looking at the horizon not the page.
+
+ACTION:
+Standing still, looking out — not writing yet, thinking.
+
+EXPRESSION:
+Reflective
+
+WARDROBE:
+Light kurta, hair down, press badge tucked but visible.
+
+PROPS:
+Open notebook, pen resting on it.
+
+LIGHTING:
+Warm golden sunset, long shadows, cinematic and soft.
+
+MOOD:
+Reflective
+
+---
+
+STRICT CHARACTER LOCK:
+Use the uploaded ADIRA reference image.
+Treat ADIRA as a persistent character — same person, every image.
+Do not redesign face.
+Do not reinterpret facial anatomy.
+Preserve exact identity.
+
+CAN CHANGE:
+Clothes, hairstyle, pose, environment, lighting, props
+
+CANNOT CHANGE:
+Face structure, eyes, jawline, skin tone, core identity
+
+---
+
+STYLE:
+Editorial illustration
+Graphic novel × Indian cinema poster
+Not photorealistic. Not cartoon.
+
+FORMAT:
+Square 1:1
+No text or captions in the image
+Cinematic composition
+High detail
+```
+
+---
+
+## NOTES FOR CONSISTENCY OVER TIME
+
+- Always upload `adira-avatar.png` in the same message as your prompt.
+- As you build a library of approved images, upload a previous approved image alongside the avatar — more reference points means tighter face consistency.
+- If her face starts to drift across image generations, re-anchor by uploading the original avatar AND the most recent approved image together.
+- The press badge reading **"ADIRA / CineGrok"** is her constant. It should appear in every image.
