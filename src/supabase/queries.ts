@@ -37,11 +37,6 @@ export async function fetchDemoFilterDiagnostic(): Promise<DemoFilterDiagnostic>
 // Status values that indicate a real, active filmmaker (not a demo placeholder)
 const REAL_STATUSES = ['active', 'beta', 'free', 'premiere'];
 
-// A publicly visible, non-demo filmmaker
-const PUBLISHED_FILTER = {
-  is_published: true,
-  // subscription_status filtered via .in() below
-};
 
 function extractFirstName(fullName: string | null): string {
   if (!fullName) return 'A filmmaker';
@@ -51,6 +46,22 @@ function extractFirstName(fullName: string | null): string {
 function extractPrimaryRole(roles: string[] | null): string {
   if (!roles || roles.length === 0) return 'Filmmaker';
   return roles[0];
+}
+
+function extractHandle(url: string | null, platform: 'instagram' | 'twitter'): string | null {
+  if (!url) return null;
+  const patterns: Record<string, RegExp> = {
+    instagram: /instagram\.com\/([^/?#]+)/,
+    twitter:   /(?:twitter|x)\.com\/([^/?#]+)/,
+  };
+  const match = url.match(patterns[platform]);
+  if (!match || !match[1] || match[1] === 'intent') return null;
+  return `@${match[1]}`;
+}
+
+function buildCineGrokUrl(slug: string | null): string {
+  if (!slug) return 'https://cinegrok.in';
+  return `https://cinegrok.in/filmmakers/${slug}`;
 }
 
 export async function fetchGrowthData(): Promise<GrowthData> {
@@ -102,15 +113,16 @@ export async function fetchGrowthData(): Promise<GrowthData> {
 
   const { count: newThisWeek } = await weekQuery;
 
-  // --- Step 3: Recent real public joiners — use raw_form_data for accurate location/roles ---
+  // --- Step 3: Recent real public joiners — include slug and socials for tagging ---
   const { data: recentRaw } = await anonClient
     .from('filmmakers')
-    .select('name, primary_roles, current_city, current_state, raw_form_data')
+    .select('name, slug, primary_roles, current_city, current_state, raw_form_data')
     .eq('is_published', true)
     .in('subscription_status', REAL_STATUSES)
     .order('created_at', { ascending: false })
     .limit(5) as { data: Array<{
       name: string;
+      slug: string | null;
       primary_roles: string[] | null;
       current_city: string | null;
       current_state: string | null;
@@ -119,6 +131,7 @@ export async function fetchGrowthData(): Promise<GrowthData> {
 
   const recentPublicJoiners: PublicJoiner[] = (recentRaw || []).map(f => {
     const rd = f.raw_form_data || {};
+    const socials = (rd.socials || {}) as Record<string, string>;
     const city  = (f.current_city  || rd.currentCity  || rd.current_city  || '') as string;
     const state = (f.current_state || rd.currentState || rd.current_state || '') as string;
     const roles = (rd.primaryRoles || rd.primary_roles || f.primary_roles || []) as string[];
@@ -127,27 +140,43 @@ export async function fetchGrowthData(): Promise<GrowthData> {
       primaryRole: extractPrimaryRole(roles),
       city,
       state,
+      cineGrokUrl: buildCineGrokUrl(f.slug),
+      instagramHandle: extractHandle(socials.instagram || null, 'instagram'),
+      linkedinUrl: socials.linkedin ? socials.linkedin : null,
+      twitterHandle: extractHandle(socials.twitter || null, 'twitter'),
     };
   });
 
   // --- Step 4: First female filmmaker (pronouns contains 'she') ---
   const { data: femaleData } = await anonClient
     .from('filmmakers')
-    .select('name, primary_roles, current_city, current_state, created_at')
+    .select('name, slug, primary_roles, current_city, current_state, raw_form_data, created_at')
     .eq('is_published', true)
     .in('subscription_status', REAL_STATUSES)
     .ilike('pronouns', '%she%')
     .order('created_at', { ascending: true })
-    .limit(1);
+    .limit(1) as { data: Array<{
+      name: string; slug: string | null; primary_roles: string[] | null;
+      current_city: string | null; current_state: string | null;
+      raw_form_data: Record<string, unknown> | null; created_at: string;
+    }> | null };
 
   const firstFemaleFilmmaker: PublicJoiner | null =
     femaleData && femaleData.length > 0
-      ? {
-          firstName: extractFirstName(femaleData[0].name),
-          primaryRole: extractPrimaryRole(femaleData[0].primary_roles),
-          city: femaleData[0].current_city || '',
-          state: femaleData[0].current_state || '',
-        }
+      ? (() => {
+          const f = femaleData[0];
+          const socials = ((f.raw_form_data?.socials) || {}) as Record<string, string>;
+          return {
+            firstName: extractFirstName(f.name),
+            primaryRole: extractPrimaryRole(f.primary_roles),
+            city: f.current_city || '',
+            state: f.current_state || '',
+            cineGrokUrl: buildCineGrokUrl(f.slug),
+            instagramHandle: extractHandle(socials.instagram || null, 'instagram'),
+            linkedinUrl: socials.linkedin || null,
+            twitterHandle: extractHandle(socials.twitter || null, 'twitter'),
+          };
+        })()
       : null;
 
   // --- Step 5: First filmmaker from a new city (joined in last 24h, city new to platform) ---
@@ -176,6 +205,10 @@ export async function fetchGrowthData(): Promise<GrowthData> {
           primaryRole: extractPrimaryRole(joiner.primary_roles),
           city: joiner.current_city || '',
           state: joiner.current_state || '',
+          cineGrokUrl: buildCineGrokUrl(null),
+          instagramHandle: null,
+          linkedinUrl: null,
+          twitterHandle: null,
         };
         break;
       }

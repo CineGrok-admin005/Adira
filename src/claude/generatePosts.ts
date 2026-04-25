@@ -18,10 +18,16 @@ export async function generatePosts(event: MilestoneEvent): Promise<GeneratedPos
   const memoryContext = formatMemoryContext(memory);
 
   const joinersLine = data.recentPublicJoiners.length > 0
-    ? `Recent joiners: ${data.recentPublicJoiners
-        .filter(j => j.city)
-        .map(j => `${j.firstName} (${j.primaryRole}, ${j.city})`)
-        .join(', ')}`
+    ? `Recent joiners:\n` + data.recentPublicJoiners
+        .filter(j => j.city || j.cineGrokUrl)
+        .map(j => {
+          const handles = [
+            j.instagramHandle ? `Instagram: ${j.instagramHandle}` : '',
+            j.twitterHandle   ? `Twitter: ${j.twitterHandle}`     : '',
+            j.linkedinUrl     ? `LinkedIn: ${j.linkedinUrl}`       : '',
+          ].filter(Boolean).join(' | ');
+          return `  - ${j.firstName} (${j.primaryRole}${j.city ? ', ' + j.city : ''}) — CineGrok: ${j.cineGrokUrl}${handles ? ' | ' + handles : ''}`;
+        }).join('\n')
     : '';
 
   const roleLines = Object.entries(data.roleBreakdown)
@@ -136,7 +142,11 @@ RULES:
 - Never mention emails, phone numbers, user IDs, or internal data
 - Never use full names — first name only
 - Never say: thrilled, excited, proud to announce, journey, ecosystem, game-changer, struggling
-- Write like someone who genuinely cares about these filmmakers, not a brand account`;
+- Write like someone who genuinely cares about these filmmakers, not a brand account
+- When a joiner has an Instagram handle, tag them in the Instagram post (e.g. @mayapatel)
+- When a joiner has a Twitter handle, tag them in the Twitter post
+- Always include the filmmaker's CineGrok profile link (e.g. cinegrok.in/filmmakers/maya-patel) in at least one platform's post
+- On LinkedIn, include the full LinkedIn URL of the filmmaker if available`;
 
   const response = await client.chat.completions.create({
     model: 'llama-3.3-70b-versatile',

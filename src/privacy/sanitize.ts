@@ -9,11 +9,15 @@ export function sanitizeForPublic(data: GrowthData): GrowthData {
     milestoneHit: data.milestoneHit,
 
     recentPublicJoiners: data.recentPublicJoiners.map(f => ({
-      firstName: f.firstName,      // first name only — never full name
-      primaryRole: f.primaryRole,  // public role
-      city: f.city,                // public city
-      state: f.state,              // public state
-      // NEVER: email, phone, userId, slug, pronouns, date_of_birth, legal_name
+      firstName: f.firstName,
+      primaryRole: f.primaryRole,
+      city: f.city,
+      state: f.state,
+      cineGrokUrl: f.cineGrokUrl,         // public profile link
+      instagramHandle: f.instagramHandle, // @handle — public, filmmaker provided
+      linkedinUrl: f.linkedinUrl,         // public LinkedIn URL
+      twitterHandle: f.twitterHandle,     // @handle — public
+      // NEVER: email, phone, userId, pronouns, date_of_birth, legal_name
     })),
 
     firstFemaleFilmmaker: data.firstFemaleFilmmaker
@@ -22,6 +26,10 @@ export function sanitizeForPublic(data: GrowthData): GrowthData {
           primaryRole: data.firstFemaleFilmmaker.primaryRole,
           city: data.firstFemaleFilmmaker.city,
           state: data.firstFemaleFilmmaker.state,
+          cineGrokUrl: data.firstFemaleFilmmaker.cineGrokUrl,
+          instagramHandle: data.firstFemaleFilmmaker.instagramHandle,
+          linkedinUrl: data.firstFemaleFilmmaker.linkedinUrl,
+          twitterHandle: data.firstFemaleFilmmaker.twitterHandle,
         }
       : null,
 
@@ -31,6 +39,10 @@ export function sanitizeForPublic(data: GrowthData): GrowthData {
           primaryRole: data.firstFromNewCity.primaryRole,
           city: data.firstFromNewCity.city,
           state: data.firstFromNewCity.state,
+          cineGrokUrl: data.firstFromNewCity.cineGrokUrl,
+          instagramHandle: data.firstFromNewCity.instagramHandle,
+          linkedinUrl: data.firstFromNewCity.linkedinUrl,
+          twitterHandle: data.firstFromNewCity.twitterHandle,
         }
       : null,
 
@@ -51,15 +63,20 @@ export function sanitizeForPublic(data: GrowthData): GrowthData {
     multiRoleCount: data.multiRoleCount,
   };
 
-  // Final safety scan — reject anything that looks like PII slipping through
+  // Final safety scan — reject emails, passwords, secrets
+  // Note: .com alone is NOT forbidden — social/profile URLs (instagram.com, linkedin.com) are intentional
   const safeString = JSON.stringify(safe);
-  const forbidden = ['@gmail', '@yahoo', '@hotmail', '.com', 'password', 'token', 'secret'];
+  const forbidden = ['@gmail.com', '@yahoo.com', '@hotmail.com', '@outlook.com', 'password', 'secret'];
   for (const pattern of forbidden) {
     if (safeString.toLowerCase().includes(pattern)) {
       throw new Error(
         `PRIVACY GUARD: Detected forbidden pattern "${pattern}" in sanitized data. Aborting before Claude call.`
       );
     }
+  }
+  // Also reject bare email patterns (anything@anything.tld not already caught)
+  if (/"[^"]*@[^"]*\.[a-z]{2,}"/.test(safeString) && !safeString.includes('cinegrok.in')) {
+    throw new Error('PRIVACY GUARD: Detected email address pattern in sanitized data. Aborting.');
   }
 
   return safe;

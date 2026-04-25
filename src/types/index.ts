@@ -42,6 +42,10 @@ export interface PublicJoiner {
   primaryRole: string;
   city: string;
   state: string;
+  cineGrokUrl: string;          // https://cinegrok.in/filmmakers/slug
+  instagramHandle: string | null; // @handle extracted from socials.instagram
+  linkedinUrl: string | null;     // full linkedin.com/in/handle URL
+  twitterHandle: string | null;   // @handle extracted from socials.twitter
 }
 
 export interface GeneratedPosts {
