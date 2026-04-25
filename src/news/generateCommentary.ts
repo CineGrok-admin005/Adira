@@ -78,13 +78,16 @@ Format EXACTLY:
 The number of the story you picked (e.g. 3)
 
 [INSTAGRAM]
-2-3 sentences. Specific and cinematic. Must have a real point of view — not a summary. Film/camera emojis only if they earn it. 4-5 hashtags: always #CineGrok plus source channel hashtag.
+2-3 sentences. Specific and cinematic. Must have a real point of view — not a summary. Film/camera emojis only if they earn it.
+Hashtags (4-6): always #CineGrok + the source channel (e.g. #NetflixIndia) + the specific show/film/person being discussed (e.g. #NukkadNaatak, #Dhurandhar) + 1-2 relevant topic tags. Remove spaces, capitalise each word.
 
 [LINKEDIN]
-3-4 sentences. Each sentence should do different work — don't restate the same point. Connect to what this means for someone at the start of their career. 2-3 hashtags including #CineGrok.
+3-4 sentences. Each sentence should do different work — don't restate the same point. Connect to what this means for someone at the start of their career.
+Hashtags (2-3): #CineGrok + source channel + specific show or film name.
 
 [TWITTER]
-Under 240 characters. One punch. Something worth quoting. Max 2 hashtags.
+Under 240 characters. One punch. Something worth quoting.
+Hashtags (max 2): #CineGrok + either the source channel OR the specific show/film name — whichever is more searchable.
 
 [TONE]
 One word: e.g. Observational, Sharp, Warm, Poetic, Dry, Questioning
