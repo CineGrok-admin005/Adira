@@ -4,29 +4,26 @@ dotenv.config();
 import axios, { AxiosError } from 'axios';
 
 async function main() {
-  const required = ['LINKEDIN_ACCESS_TOKEN', 'LINKEDIN_ORGANIZATION_ID'];
-  const missing = required.filter(k => !process.env[k] || process.env[k]!.includes('YOUR_'));
-  if (missing.length > 0) {
-    console.error(`❌ Missing or unfilled env vars: ${missing.join(', ')}`);
-    console.error('   Fill these in .env before running this test.');
+  const token    = process.env.LINKEDIN_ACCESS_TOKEN!;
+  const personId = process.env.LINKEDIN_PERSON_ID!;
+
+  if (!token || !personId) {
+    console.error('❌ Missing LINKEDIN_ACCESS_TOKEN or LINKEDIN_PERSON_ID in .env');
     process.exit(1);
   }
 
-  const orgId = process.env.LINKEDIN_ORGANIZATION_ID!;
-  const token = process.env.LINKEDIN_ACCESS_TOKEN!;
-
-  console.log('💼 Posting test update to LinkedIn company page...');
+  console.log(`💼 Posting test update to LinkedIn personal profile (urn:li:person:${personId})...`);
 
   try {
-    await axios.post(
+    const res = await axios.post(
       'https://api.linkedin.com/v2/ugcPosts',
       {
-        author: `urn:li:organization:${orgId}`,
+        author: `urn:li:person:${personId}`,
         lifecycleState: 'PUBLISHED',
         specificContent: {
           'com.linkedin.ugc.ShareContent': {
             shareCommentary: {
-              text: 'Testing CineGrok growth agent integration. Building something exciting for Indian filmmakers 🎬',
+              text: 'Testing CineGrok × ADIRA integration. Building something for Indian filmmakers. 🎬\n\n— ADIRA, CineGrok\n\n#CineGrok #IndianFilmmakers',
             },
             shareMediaCategory: 'NONE',
           },
@@ -44,21 +41,14 @@ async function main() {
       }
     );
     console.log('✅ LinkedIn post published successfully!');
-    console.log(`   Check your company page: https://www.linkedin.com/company/${orgId}/posts/`);
+    console.log(`   Post ID: ${(res.data as Record<string, unknown>).id}`);
+    console.log(`   Check: https://www.linkedin.com/in/golla-sivaji-raja/recent-activity/all/`);
   } catch (err: unknown) {
     const axiosErr = err as AxiosError;
     const status = axiosErr.response?.status;
     const data = axiosErr.response?.data as Record<string, unknown> | undefined;
-    console.error('❌ LinkedIn post failed.');
-    if (status === 401) {
-      console.error('   Token is invalid or expired. Generate a new one at linkedin.com/developers.');
-    } else if (status === 403) {
-      console.error('   Token lacks permission. Ensure scope includes: w_member_social or w_organization_social.');
-    } else if (status === 404) {
-      console.error('   Organization ID not found. Check LINKEDIN_ORGANIZATION_ID in .env.');
-    } else {
-      console.error(`   Status ${status}:`, JSON.stringify(data, null, 2));
-    }
+    console.error(`❌ LinkedIn post failed. Status ${status}:`);
+    console.error(JSON.stringify(data, null, 2));
     process.exit(1);
   }
 }

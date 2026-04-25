@@ -6,12 +6,11 @@ export async function checkLinkedInTokenExpiry(sendWarning: (msg: string) => Pro
   const expiresAt = process.env.LINKEDIN_TOKEN_EXPIRES_AT;
   if (!expiresAt) return;
 
-  // Accept both Unix timestamp (seconds) and ISO date string
-  const raw = expiresAt.trim().split(' ')[0]; // strip trailing " UTC" if present
+  const raw = expiresAt.trim().split(' ')[0];
   const asNumber = Number(raw);
   const expiryDate = !isNaN(asNumber) && asNumber > 1e9
-    ? new Date(asNumber * 1000)   // Unix seconds → ms
-    : new Date(raw);              // ISO string
+    ? new Date(asNumber * 1000)
+    : new Date(raw);
 
   const daysLeft = Math.floor((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
 
@@ -23,14 +22,18 @@ export async function checkLinkedInTokenExpiry(sendWarning: (msg: string) => Pro
 }
 
 export async function postToLinkedIn(text: string): Promise<void> {
-  const orgId = process.env.LINKEDIN_ORGANIZATION_ID!;
-  const token = process.env.LINKEDIN_ACCESS_TOKEN!;
+  const token     = process.env.LINKEDIN_ACCESS_TOKEN!;
+  const personId  = process.env.LINKEDIN_PERSON_ID!;
+
+  if (!personId) {
+    throw new Error('LINKEDIN_PERSON_ID not set. Run the token refresh flow to get it.');
+  }
 
   try {
     await axios.post(
       'https://api.linkedin.com/v2/ugcPosts',
       {
-        author: `urn:li:organization:${orgId}`,
+        author: `urn:li:person:${personId}`,
         lifecycleState: 'PUBLISHED',
         specificContent: {
           'com.linkedin.ugc.ShareContent': {
@@ -50,11 +53,11 @@ export async function postToLinkedIn(text: string): Promise<void> {
         },
       }
     );
-    console.log('✅ Posted to LinkedIn');
+    console.log('✅ Posted to LinkedIn (personal profile: Sivaji Raja)');
   } catch (err: unknown) {
     const axiosErr = err as AxiosError;
     if (axiosErr.response?.status === 401) {
-      throw new Error('LinkedIn token expired or invalid. Run: npm run test:linkedin to verify credentials.');
+      throw new Error('LinkedIn token expired. Regenerate at linkedin.com/developers');
     }
     throw err;
   }
