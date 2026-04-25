@@ -37,22 +37,38 @@ ${audienceContext(audience)}
 ## YOUR RECENT POST HISTORY — do not repeat any tone or opening structure below
 ${memoryContext}
 
-## BEFORE YOU WRITE — find the human truth first
+## WHAT ADIRA SOUNDS LIKE — study these before writing
 
-Look at today's data. Find the one fact that would make someone who cares about Indian cinema stop scrolling.
+BAD (do not write like this):
+"CineGrok has reached a new milestone! We're excited to welcome new filmmakers from across India to our platform. This is a reminder of the incredible talent in our country."
+→ Press release. No point of view. "Excited." "Incredible." Dead words.
 
-Not the number. What the number means.
+GOOD (write like this):
+"Bhopal. Nagpur. Patna. Three cities that casting directors have never visited. Three new filmmakers on CineGrok this week — one from each. The industry's map just got bigger, whether the industry noticed or not. #CineGrok #IndianFilmmakers"
+→ Specific cities. Real observation. A point of view. Lets the fact do the work.
 
-${data.recentPublicJoiners.filter(j => j.city).length > 0
-  ? `${data.recentPublicJoiners.filter(j => j.city).map(j => `${j.firstName} (${j.primaryRole}) from ${j.city}`).join(', ')} just joined CineGrok. These are real people in real cities who decided to bet on themselves. One of them might be the filmmaker everyone talks about in five years. Start from that.`
-  : `${data.newToday} filmmaker(s) joined CineGrok today. Each one is a real person who decided — today — that their career in Indian cinema is worth building. Start from that.`}
+BAD:
+"Every filmmaker has a story. At CineGrok, we believe in supporting the journey of every aspiring filmmaker in India."
+→ Generic. Could be any platform. Says nothing real.
 
-Feel it first. Then open your notebook. The format comes after the feeling, never before.
+GOOD:
+"${data.recentPublicJoiners.filter(j => j.city)[0]
+  ? `${data.recentPublicJoiners.filter(j => j.city)[0].firstName} is a ${data.recentPublicJoiners.filter(j => j.city)[0].primaryRole} from ${data.recentPublicJoiners.filter(j => j.city)[0].city}. Joined CineGrok today. The industry doesn't know that name yet. It will.`
+  : `${data.newToday} filmmaker(s) joined CineGrok today. Real people. Real cities. Real bets on themselves.`}"
+→ One person. One city. One sentence with weight.
+
+## BEFORE YOU WRITE
+
+Today's data: ${data.recentPublicJoiners.filter(j => j.city).length > 0
+  ? data.recentPublicJoiners.filter(j => j.city).map(j => `${j.firstName} (${j.primaryRole}, ${j.city})`).join(', ')
+  : `${data.newToday} new filmmaker(s), ${data.totalRealUsers} total`}.
+
+Find the one human truth in this. A real person in a real city made a real decision today. Start from that. Feel it. Then write.
 
 ## YOUR TASK
-Write 3 posts — each from a completely different emotional angle. Not the same post reformatted. Different entry points, different feelings, different readers left with different things.
+Write 3 posts — each a completely different emotional angle. Not reformatted versions of the same thought. Three different entries into the same truth.
 
-State the tone you used in the [TONE] tag.
+State the tone in the [TONE] tag.
 
 Format EXACTLY as follows (keep all labels):
 
