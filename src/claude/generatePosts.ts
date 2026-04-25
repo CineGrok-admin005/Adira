@@ -174,9 +174,44 @@ RULES:
   const SIG = '\n\n— ADIRA, CineGrok';
   const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
 
-  const instagram = addSig(instagramMatch?.[1]?.trim() ?? 'Could not generate Instagram post');
-  const linkedin  = addSig(linkedinMatch?.[1]?.trim()  ?? 'Could not generate LinkedIn post');
-  const twitter   = addSig(twitterMatch?.[1]?.trim()   ?? 'Could not generate Twitter post');
+  // Programmatically inject social handles and CineGrok links — never rely on the model for this
+  const joiners = data.recentPublicJoiners;
+
+  const instaHandles = joiners
+    .filter(j => j.instagramHandle)
+    .map(j => j.instagramHandle!)
+    .join(' ');
+
+  const cineGrokLinks = joiners
+    .filter(j => j.cineGrokUrl && j.cineGrokUrl !== 'https://cinegrok.in')
+    .map(j => j.cineGrokUrl)
+    .slice(0, 2) // max 2 profile links per post to keep it clean
+    .join('\n');
+
+  const linkedInMentions = joiners
+    .filter(j => j.linkedinUrl)
+    .map(j => j.linkedinUrl!)
+    .join('\n');
+
+  // Build injected suffix for each platform
+  const igRaw = instagramMatch?.[1]?.trim() ?? 'Could not generate Instagram post';
+  const igSuffix = [
+    instaHandles ? instaHandles : '',
+    cineGrokLinks,
+  ].filter(Boolean).join('\n');
+
+  const liRaw = linkedinMatch?.[1]?.trim() ?? 'Could not generate LinkedIn post';
+  const liSuffix = [
+    linkedInMentions,
+    cineGrokLinks,
+  ].filter(Boolean).join('\n');
+
+  const twRaw = twitterMatch?.[1]?.trim() ?? 'Could not generate Twitter post';
+  const twSuffix = cineGrokLinks ? cineGrokLinks.split('\n')[0] : ''; // just one link on Twitter
+
+  const instagram = addSig(igSuffix ? `${igRaw}\n${igSuffix}` : igRaw);
+  const linkedin  = addSig(liSuffix ? `${liRaw}\n${liSuffix}` : liRaw);
+  const twitter   = addSig(twSuffix ? `${twRaw}\n${twSuffix}` : twRaw);
   const imagePrompt = imagePromptMatch?.[1]?.trim() ?? 'Cinematic film set in India, warm golden lighting, filmmaker at work';
   const rawStyle  = imageStyleMatch?.[1]?.trim() ?? 'Cinematic';
   const imageStyle = (['Cinematic', 'Moody', 'Surreal'].includes(rawStyle)
