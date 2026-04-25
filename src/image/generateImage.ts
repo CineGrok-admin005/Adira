@@ -15,41 +15,47 @@ export async function generateAdiraImage(prompt: string, style: string): Promise
     const faceBuffer = readFileSync(ADIRA_IMAGE_PATH);
     const faceBlob = new Blob([faceBuffer], { type: 'image/png' });
 
-    // Style-specific prompt suffix
     const styleMap: Record<string, string> = {
       Cinematic: 'editorial illustration, graphic novel style, cinematic lighting, Indian cinema aesthetic',
       Moody:     'editorial illustration, graphic novel style, moody dramatic lighting, deep shadows',
       Surreal:   'editorial illustration, graphic novel style, surreal dreamlike atmosphere',
     };
-    const styleSuffix = styleMap[style] ?? styleMap.Cinematic;
+    const fullPrompt = `ADIRA, Indian woman reporter, ${prompt}, ${styleMap[style] ?? styleMap.Cinematic}, press lanyard, high quality, detailed`;
 
-    const fullPrompt = `ADIRA, Indian woman reporter, ${prompt}, ${styleSuffix}, press lanyard, high quality, detailed`;
+    // Endpoint: /generate_image
+    // Params: prompt, id_image, timestep_to_start_id, guidance, seed(str),
+    //         true_cfg_scale, width, height, num_steps, id_weight,
+    //         negative_prompt, timestep_to_start_cfg, max_sequence_length
+    const result = await (app.predict('/generate_image', [
+      fullPrompt,   // prompt
+      faceBlob,     // id_image
+      1,            // timestep_to_start_id (0-1 for illustrated style)
+      4,            // guidance
+      '-1',         // seed as string
+      1,            // true_cfg_scale
+      1024,         // width
+      1024,         // height
+      28,           // num_steps
+      1,            // id_weight
+      '(lowres, low quality, worst quality:1.2), text, watermark, deformed, ugly, blurry',
+      1,            // timestep_to_start_cfg
+      128,          // max_sequence_length
+    ]) as Promise<unknown>).catch((err: Error) => {
+      console.error('❌ PuLID-FLUX predict failed:', err.message);
+      return null;
+    });
 
-    const result: unknown = await app.predict('/run', [
-      fullPrompt,                                    // prompt
-      faceBlob,                                      // id_image
-      1,                                             // id_weight (1 = strong identity)
-      1024,                                          // width
-      1024,                                          // height
-      28,                                            // num_steps
-      1,                                             // timestep_to_start_cfg (1 for illustrated/stylized)
-      4,                                             // guidance
-      -1,                                            // seed (-1 = random)
-      128,                                           // max_sequence_length
-    ]);
+    if (!result) return null;
 
-    const data = (result as { data?: Array<{ url?: string }> }).data;
-    const imageUrl = data?.[0]?.url;
-
-    if (!imageUrl) {
+    const url = (result as { data?: Array<{ url?: string }> }).data?.[0]?.url;
+    if (!url) {
       console.warn('⚠️  PuLID-FLUX returned no image URL');
       return null;
     }
 
     console.log('✅ Image generated. Downloading...');
-    const response = await fetch(imageUrl);
-    const arrayBuffer = await response.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    const resp = await fetch(url);
+    return Buffer.from(await resp.arrayBuffer());
 
   } catch (error) {
     console.error('❌ PuLID-FLUX image generation failed:', (error as Error).message);
