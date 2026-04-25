@@ -102,21 +102,33 @@ export async function fetchGrowthData(): Promise<GrowthData> {
 
   const { count: newThisWeek } = await weekQuery;
 
-  // --- Step 3: Recent real public joiners from filmmakers table ---
+  // --- Step 3: Recent real public joiners — use raw_form_data for accurate location/roles ---
   const { data: recentRaw } = await anonClient
     .from('filmmakers')
-    .select('name, primary_roles, current_city, current_state')
+    .select('name, primary_roles, current_city, current_state, raw_form_data')
     .eq('is_published', true)
     .in('subscription_status', REAL_STATUSES)
     .order('created_at', { ascending: false })
-    .limit(5);
+    .limit(5) as { data: Array<{
+      name: string;
+      primary_roles: string[] | null;
+      current_city: string | null;
+      current_state: string | null;
+      raw_form_data: Record<string, unknown> | null;
+    }> | null };
 
-  const recentPublicJoiners: PublicJoiner[] = (recentRaw || []).map(f => ({
-    firstName: extractFirstName(f.name),
-    primaryRole: extractPrimaryRole(f.primary_roles),
-    city: f.current_city || '',
-    state: f.current_state || '',
-  }));
+  const recentPublicJoiners: PublicJoiner[] = (recentRaw || []).map(f => {
+    const rd = f.raw_form_data || {};
+    const city  = (f.current_city  || rd.currentCity  || rd.current_city  || '') as string;
+    const state = (f.current_state || rd.currentState || rd.current_state || '') as string;
+    const roles = (rd.primaryRoles || rd.primary_roles || f.primary_roles || []) as string[];
+    return {
+      firstName: extractFirstName(f.name),
+      primaryRole: extractPrimaryRole(roles),
+      city,
+      state,
+    };
+  });
 
   // --- Step 4: First female filmmaker (pronouns contains 'she') ---
   const { data: femaleData } = await anonClient
@@ -179,79 +191,99 @@ export async function fetchGrowthData(): Promise<GrowthData> {
     ? (MILESTONE_NUMBERS.filter(m => total >= m).pop() ?? null)
     : (MILESTONE_NUMBERS.find(m => total >= m && total - joinedToday < m) ?? null);
 
-  // --- Step 7: Fetch all real published filmmakers for KPI aggregation ---
-  const { data: allFilmmakers } = await anonClient
+  // --- Step 7: Profile analytics — views and clicks from dedicated analytics tables ---
+  const { data: allDailyAnalytics } = await serviceClient
+    .from('profile_analytics_daily')
+    .select('views, clicks, referrer_instagram, date') as {
+      data: Array<{ views: number; clicks: number; referrer_instagram: number; date: string }> | null
+    };
+
+  const analytics = allDailyAnalytics || [];
+  const totalProfileViews  = analytics.reduce((s, r) => s + (r.views  || 0), 0);
+  const totalProfileClicks = analytics.reduce((s, r) => s + (r.clicks || 0), 0);
+  const weeklyProfileViews = analytics
+    .filter(r => r.date >= oneWeekAgo.split('T')[0])
+    .reduce((s, r) => s + (r.views || 0), 0);
+  const weeklyInstagramReferrals = analytics
+    .filter(r => r.date >= oneWeekAgo.split('T')[0])
+    .reduce((s, r) => s + (r.referrer_instagram || 0), 0);
+
+  // --- Step 8: Shortlisted count — collaboration signal ---
+  const { count: shortlistedCount } = await serviceClient
+    .from('interested_profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'shortlisted');
+
+  // --- Step 9: Active opportunities (festivals, grants) ---
+  const { count: activeOpportunities } = await serviceClient
+    .from('opportunities')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'approved');
+
+  // --- Step 10: Founding members ---
+  const { count: foundingMemberCount } = await serviceClient
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .not('founding_member_number', 'is', null);
+
+  // --- Step 11: Rich profile data from raw_form_data (the real source of truth) ---
+  const { data: rawProfiles } = await anonClient
     .from('filmmakers')
-    .select(
-      'profile_views, primary_roles, secondary_roles, current_city, current_state, ' +
-      'open_to_collaborations, preferred_genres, published_at'
-    )
+    .select('raw_form_data')
     .eq('is_published', true)
-    .in('subscription_status', REAL_STATUSES) as { data: Array<{
-      profile_views: number | null;
-      primary_roles: string[] | null;
-      secondary_roles: string[] | null;
-      current_city: string | null;
-      current_state: string | null;
-      open_to_collaborations: boolean | string | null;
-      preferred_genres: string[] | null;
-      published_at: string | null;
-    }> | null };
+    .in('subscription_status', REAL_STATUSES)
+    .not('raw_form_data', 'is', null) as {
+      data: Array<{ raw_form_data: Record<string, unknown> }> | null
+    };
 
-  const all = allFilmmakers || [];
+  const profiles = (rawProfiles || []).map(r => r.raw_form_data);
 
-  // Profile views & clicks (summed across all real published filmmakers)
-  const totalProfileViews = all.reduce((sum, f) => sum + (f.profile_views || 0), 0);
-  const totalProfileClicks = 0; // profile_clicks column not confirmed — default to 0
-
-  // Views on profiles published within last 7 days
-  const weeklyProfileViews = all
-    .filter(f => f.published_at && new Date(f.published_at) >= new Date(oneWeekAgo))
-    .reduce((sum, f) => sum + (f.profile_views || 0), 0);
+  // Cities and states from raw_form_data (camelCase keys)
+  const cities  = profiles.map(p => (p.currentCity  || p.current_city)  as string).filter(Boolean);
+  const states  = profiles.map(p => (p.currentState || p.current_state) as string).filter(Boolean);
+  const uniqueCities = new Set(cities).size;
+  const uniqueStates = new Set(states).size;
 
   // Open to collaborations
-  const openToCollaborations = all.filter(f =>
-    f.open_to_collaborations === true ||
-    (typeof f.open_to_collaborations === 'string' &&
-      f.open_to_collaborations.toLowerCase().includes('yes'))
-  ).length;
+  const openToCollaborations = profiles.filter(p => {
+    const v = p.openToCollaborations || p.open_to_collaborations;
+    return v === true || (typeof v === 'string' && v.toLowerCase().includes('yes'));
+  }).length;
 
-  // Unique cities and states
-  const uniqueCities = new Set(all.map(f => f.current_city).filter(Boolean)).size;
-  const uniqueStates = new Set(all.map(f => f.current_state).filter(Boolean)).size;
-
-  // Role breakdown — count by primary role
+  // Role breakdown from primaryRoles in raw_form_data
   const roleBreakdown: Record<string, number> = {};
-  for (const f of all) {
-    const role = extractPrimaryRole(f.primary_roles);
-    if (role && role !== 'Filmmaker') {
-      roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
+  for (const p of profiles) {
+    const roles = (p.primaryRoles || p.primary_roles || []) as string[];
+    for (const role of roles) {
+      if (role) roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
     }
   }
 
-  // Top genres — flatten and count across all filmmakers
+  // Multi-role filmmakers
+  const multiRoleCount = profiles.filter(p => {
+    const sec = (p.secondaryRoles || p.secondary_roles || []) as string[];
+    return sec.length > 0;
+  }).length;
+
+  // Genres from films/filmography in raw_form_data
   const genreCounts: Record<string, number> = {};
-  for (const f of all) {
-    const genres: string[] = Array.isArray(f.preferred_genres) ? f.preferred_genres : [];
-    for (const g of genres) {
-      if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
+  let totalFilmsInPortfolios = 0;
+  for (const p of profiles) {
+    const films = ((p.films || p.filmography || []) as Array<{ genre?: string }>);
+    totalFilmsInPortfolios += films.length;
+    for (const film of films) {
+      if (film.genre) {
+        // genres can be comma-separated e.g. "Thriller, Crime" — split and count each
+        for (const g of film.genre.split(',').map((s: string) => s.trim()).filter(Boolean)) {
+          genreCounts[g] = (genreCounts[g] || 0) + 1;
+        }
+      }
     }
   }
   const topGenres = Object.entries(genreCounts)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([genre]) => genre);
-
-  // Multi-role filmmakers (have at least one secondary role)
-  const multiRoleCount = all.filter(f =>
-    Array.isArray(f.secondary_roles) && f.secondary_roles.length > 0
-  ).length;
-
-  // Founding members count
-  const { count: foundingMemberCount } = await serviceClient
-    .from('profiles')
-    .select('*', { count: 'exact', head: true })
-    .not('founding_member_number', 'is', null);
 
   return {
     totalRealUsers: total,
@@ -262,12 +294,16 @@ export async function fetchGrowthData(): Promise<GrowthData> {
     firstFromNewCity,
     milestoneHit,
     totalProfileViews,
-    totalProfileClicks,
     weeklyProfileViews,
+    totalProfileClicks,
+    weeklyInstagramReferrals,
     openToCollaborations,
+    shortlistedCount: shortlistedCount || 0,
     uniqueCities,
     uniqueStates,
     foundingMemberCount: foundingMemberCount || 0,
+    totalFilmsInPortfolios,
+    activeOpportunities: activeOpportunities || 0,
     roleBreakdown,
     topGenres,
     multiRoleCount,

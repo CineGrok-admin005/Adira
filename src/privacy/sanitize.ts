@@ -34,14 +34,18 @@ export function sanitizeForPublic(data: GrowthData): GrowthData {
         }
       : null,
 
-    // Engagement stats — aggregated, no individual PII
+    // Engagement — all aggregated, no individual PII
     totalProfileViews: data.totalProfileViews,
-    totalProfileClicks: data.totalProfileClicks,
     weeklyProfileViews: data.weeklyProfileViews,
+    totalProfileClicks: data.totalProfileClicks,
+    weeklyInstagramReferrals: data.weeklyInstagramReferrals,
     openToCollaborations: data.openToCollaborations,
+    shortlistedCount: data.shortlistedCount,
     uniqueCities: data.uniqueCities,
     uniqueStates: data.uniqueStates,
     foundingMemberCount: data.foundingMemberCount,
+    totalFilmsInPortfolios: data.totalFilmsInPortfolios,
+    activeOpportunities: data.activeOpportunities,
     roleBreakdown: data.roleBreakdown,
     topGenres: data.topGenres,
     multiRoleCount: data.multiRoleCount,

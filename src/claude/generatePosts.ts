@@ -38,18 +38,25 @@ Signups:
 ${joinersLine}
 
 Platform reach:
-- Cities covered: ${data.uniqueCities} | States: ${data.uniqueStates}
+- Cities: ${data.uniqueCities} | States: ${data.uniqueStates}
 - Founding members: ${data.foundingMemberCount}
+- Active opportunities on CineGrok (festivals, grants): ${data.activeOpportunities}
 
-Engagement:
+Profile engagement:
 - Total profile views (all time): ${data.totalProfileViews}
 - Profile views this week: ${data.weeklyProfileViews}
-- Filmmakers open to collaborations right now: ${data.openToCollaborations}
-- Filmmakers with multiple roles: ${data.multiRoleCount}
+- Portfolio clicks (all time): ${data.totalProfileClicks}
+- Visitors arriving from Instagram this week: ${data.weeklyInstagramReferrals}
+
+Collaboration signals:
+- Filmmakers open to collaborations: ${data.openToCollaborations}
+- Times a filmmaker was shortlisted by someone: ${data.shortlistedCount}
 
 Community composition:
-${roleLines || '  (data unavailable)'}
-Top genres on CineGrok: ${data.topGenres.length > 0 ? data.topGenres.join(', ') : 'not yet available'}
+- Films uploaded across all profiles: ${data.totalFilmsInPortfolios}
+- Filmmakers with multiple roles: ${data.multiRoleCount}
+${roleLines ? `Role breakdown:\n${roleLines}` : ''}
+Top genres: ${data.topGenres.length > 0 ? data.topGenres.join(', ') : 'not yet available'}
 
 ## AUDIENCE MODE TODAY
 ${audienceContext(audience)}

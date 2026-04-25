@@ -12,21 +12,29 @@ export interface GrowthData {
   firstFromNewCity: PublicJoiner | null;
   milestoneHit: number | null;
 
-  // Engagement
+  // Profile engagement (from profile_analytics_daily)
   totalProfileViews: number;
+  weeklyProfileViews: number;
   totalProfileClicks: number;
-  weeklyProfileViews: number;   // views on profiles published in the last 7 days
+  weeklyInstagramReferrals: number; // people finding CineGrok filmmakers via Instagram
 
-  // Platform depth
-  openToCollaborations: number; // filmmakers actively open to working together
-  uniqueCities: number;         // how many cities CineGrok covers
-  uniqueStates: number;         // how many Indian states
-  foundingMemberCount: number;  // profiles with a founding_member_number
+  // Collaboration signals
+  openToCollaborations: number;  // filmmakers with openToCollaborations = "Yes"
+  shortlistedCount: number;      // times a filmmaker was shortlisted by someone
 
-  // Community composition
-  roleBreakdown: Record<string, number>;  // primary role → count
-  topGenres: string[];                    // top 5 genres across all filmmakers
-  multiRoleCount: number;                 // filmmakers with secondary roles too
+  // Platform reach
+  uniqueCities: number;
+  uniqueStates: number;
+  foundingMemberCount: number;
+
+  // Content depth
+  totalFilmsInPortfolios: number;  // total films uploaded across all filmmakers
+  activeOpportunities: number;     // live festivals/grants on CineGrok
+
+  // Community composition (from raw_form_data)
+  roleBreakdown: Record<string, number>;
+  topGenres: string[];
+  multiRoleCount: number;
 }
 
 export interface PublicJoiner {
