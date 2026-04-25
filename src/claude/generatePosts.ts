@@ -107,8 +107,8 @@ Format EXACTLY as follows (keep all labels):
 
 [INSTAGRAM]
 [TONE: <tone name>]
-<2-3 sentences. Emotional, cinematic. Film/camera emojis used naturally.
-Hashtags (4-6): always #CineGrok + specific city if mentioned (e.g. #Nagpur, #Bhopal) + specific role (e.g. #Cinematographer, #IndieDirector) + 1-2 broader tags like #IndianFilmmakers #EmergingFilmmakers>
+<2-3 sentences. Emotional, cinematic. Film/camera emojis used naturally. Focus on Social SEO by integrating highly searched keywords naturally into the caption text.
+Hashtags (max 3): always #CineGrok + specific city if mentioned + specific role. No generic hashtags.>
 
 [LINKEDIN]
 [TONE: <tone name>]

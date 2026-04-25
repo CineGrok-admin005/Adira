@@ -78,8 +78,8 @@ Format EXACTLY:
 The number of the story you picked (e.g. 3)
 
 [INSTAGRAM]
-2-3 sentences. Specific and cinematic. Must have a real point of view — not a summary. Film/camera emojis only if they earn it.
-Hashtags (4-6): always #CineGrok + the source channel (e.g. #NetflixIndia) + the specific show/film/person being discussed (e.g. #NukkadNaatak, #Dhurandhar) + 1-2 relevant topic tags. Remove spaces, capitalise each word.
+2-3 sentences. Specific and cinematic. Must have a real point of view — not a summary. Film/camera emojis only if they earn it. Focus on Social SEO by integrating highly searched keywords naturally into the caption text.
+Hashtags (max 3): always #CineGrok + the specific show or person discussed + 1 hyper-specific topic. No generic hashtags. Remove spaces, capitalise each word.
 
 [LINKEDIN]
 3-4 sentences. Each sentence should do different work — don't restate the same point. Connect to what this means for someone at the start of their career.
@@ -168,6 +168,7 @@ One of: Cinematic / Moody / Surreal`;
       title: sourceStory.youtubeVideo.title,
       url: sourceStory.youtubeVideo.url,
       newsSources: sourceStory.matchingNews.map(n => n.source).filter(Boolean),
+      originalIndex: selectedIndex
     },
     imagePrompt: imagePromptMatch?.[1]?.trim() ?? 'A filmmaker looking at a screen in a dark edit suite, warm single light source',
     imageStyle: (imageStyleMatch?.[1] as 'Cinematic' | 'Moody' | 'Surreal') ?? 'Cinematic',

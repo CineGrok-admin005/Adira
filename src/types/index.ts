@@ -92,6 +92,7 @@ export interface CommentaryPost {
     title: string;
     url: string;
     newsSources: string[];
+    originalIndex?: number;
   };
   imagePrompt: string;
   imageStyle: 'Cinematic' | 'Moody' | 'Surreal';
@@ -113,4 +114,14 @@ export interface MilestoneEvent {
     | 'NONE';
   message: string;
   data: GrowthData;
+}
+
+export interface BacklogItem {
+  id: string;
+  type: 'MILESTONE' | 'COMMENTARY';
+  priority: number;
+  data: any;
+  status: 'queued' | 'posted' | 'superseded';
+  created_at: string;
+  expires_at: string;
 }

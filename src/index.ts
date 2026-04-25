@@ -58,14 +58,33 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
 
     // ── STEP 3: Milestone detection ──
     console.log('🎯 Detecting milestones...');
-    const milestone = detectMilestone(safeData);
+    const { detectAllMilestones } = await import('./milestones/detector');
+    const { pushToBacklog, getNextFromBacklog, supersedeMilestones, markBacklogItemPosted } = await import('./supabase/queue');
+
+    const allMilestones = detectAllMilestones(safeData);
+    let milestone = allMilestones.length > 0 ? allMilestones[0] : { hasMilestone: false, type: 'NONE', message: '', data: safeData as any };
+    let backlogId: string | null = null;
 
     if (!milestone.hasMilestone) {
-      console.log('💤 No milestone today. Agent going back to sleep.');
-      return;
+      console.log('💤 No organic milestone today. Checking backlog...');
+      const backlogItem = await getNextFromBacklog('MILESTONE');
+      if (backlogItem) {
+        console.log(`📦 Found queued milestone: [${backlogItem.data.type}] ${backlogItem.data.message}`);
+        milestone = backlogItem.data;
+        backlogId = backlogItem.id;
+      } else {
+        console.log('💤 Backlog is empty. Agent going back to sleep.');
+        return;
+      }
+    } else {
+      console.log(`🎉 Organic Milestone detected: [${milestone.type}] ${milestone.message}`);
+      // Supersede older milestones since we have a fresh organic one
+      await supersedeMilestones();
+      // Push any secondary milestones to backlog (priority = 10 - index)
+      for (let i = 1; i < allMilestones.length; i++) {
+        await pushToBacklog('MILESTONE', 10 - i, allMilestones[i], 7);
+      }
     }
-
-    console.log(`🎉 Milestone: [${milestone.type}] ${milestone.message}`);
 
     // ── STEP 4: Generate posts via ADIRA ──
     console.log('✍️  ADIRA is writing posts...');
@@ -113,6 +132,11 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
       catch (err) { console.error('❌ Twitter:', err instanceof Error ? err.message : err); }
       try { await postToLinkedIn(posts.linkedin); }
       catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
+      
+      if (backlogId) {
+        const { markBacklogItemPosted } = await import('./supabase/queue');
+        await markBacklogItemPosted(backlogId);
+      }
     }
 
     console.log('✅ ADIRA completed successfully!');
@@ -136,6 +160,7 @@ export async function runIntroduction(): Promise<void> {
 export async function runCommentaryAgent(): Promise<void> {
   try {
     console.log('📰 Type 2 — Fetching YouTube videos and news...');
+    const { pushToBacklog, getNextFromBacklog, markBacklogItemPosted } = await import('./supabase/queue');
 
     const [videos, news] = await Promise.all([
       fetchYouTubeVideos(),
@@ -147,17 +172,37 @@ export async function runCommentaryAgent(): Promise<void> {
     const stories = crossVerify(videos, news);
     console.log(`   Cross-verified: ${stories.length} story/stories confirmed`);
 
-    if (stories.length === 0) {
-      console.log('💤 No verified stories today. Skipping Type 2.');
-      return;
+    let post = null;
+    let backlogId: string | null = null;
+
+    if (stories.length > 0) {
+      console.log('✍️  ADIRA is writing commentary...');
+      post = await generateCommentary(stories);
+      
+      if (post && post.sourceStory.originalIndex !== undefined) {
+        // Push unused top stories to backlog (TTL: 2 days)
+        const usedIdx = post.sourceStory.originalIndex;
+        for (let i = 0; i < Math.min(stories.length, 5); i++) {
+          if (i !== usedIdx) {
+            await pushToBacklog('COMMENTARY', 5 - i, stories[i], 2);
+          }
+        }
+      }
     }
 
-    console.log('✍️  ADIRA is writing commentary...');
-    const post = await generateCommentary(stories);
-
     if (!post) {
-      console.log('💤 ADIRA skipped — no story worth commenting on today.');
-      return;
+      console.log('💤 No organic stories found. Checking backlog...');
+      const backlogItem = await getNextFromBacklog('COMMENTARY');
+      if (backlogItem) {
+        console.log(`📦 Found queued story: ${backlogItem.data.youtubeVideo.title}`);
+        post = await generateCommentary([backlogItem.data]);
+        backlogId = backlogItem.id;
+      }
+      
+      if (!post) {
+        console.log('💤 Backlog is empty or ADIRA skipped. Agent going back to sleep.');
+        return;
+      }
     }
 
     post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle) || undefined;
@@ -171,6 +216,10 @@ export async function runCommentaryAgent(): Promise<void> {
       catch (err) { console.error('❌ Twitter:', err instanceof Error ? err.message : err); }
       try { await postToLinkedIn(post.linkedin); }
       catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
+      
+      if (backlogId) {
+        await markBacklogItemPosted(backlogId);
+      }
     }
 
     console.log('✅ Type 2 commentary completed!');

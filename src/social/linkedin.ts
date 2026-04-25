@@ -21,7 +21,7 @@ export async function checkLinkedInTokenExpiry(sendWarning: (msg: string) => Pro
   }
 }
 
-export async function postToLinkedIn(text: string): Promise<void> {
+export async function postToLinkedIn(text: string, imageBuffer?: Buffer): Promise<void> {
   const token     = process.env.LINKEDIN_ACCESS_TOKEN!;
   const personId  = process.env.LINKEDIN_PERSON_ID!;
 
@@ -29,29 +29,79 @@ export async function postToLinkedIn(text: string): Promise<void> {
     throw new Error('LINKEDIN_PERSON_ID not set. Run the token refresh flow to get it.');
   }
 
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+    'X-Restli-Protocol-Version': '2.0.0',
+  };
+
   try {
+    let assetUrn: string | undefined;
+
+    // If there's an image, we do the 3-step upload process
+    if (imageBuffer) {
+      console.log('🖼️ Registering image upload with LinkedIn...');
+      
+      // Step 1: Register Upload
+      const registerRes = await axios.post(
+        'https://api.linkedin.com/v2/assets?action=registerUpload',
+        {
+          registerUploadRequest: {
+            recipes: ['urn:li:digitalmediaRecipe:feedshare-image'],
+            owner: `urn:li:person:${personId}`,
+            serviceRelationships: [
+              {
+                relationshipType: 'OWNER',
+                identifier: 'urn:li:userGeneratedContent',
+              },
+            ],
+          },
+        },
+        { headers }
+      );
+
+      assetUrn = registerRes.data.value.asset;
+      const uploadUrl = registerRes.data.value.uploadMechanism['com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest'].uploadUrl;
+
+      // Step 2: Upload Binary
+      console.log('⬆️ Uploading image binary to LinkedIn...');
+      await axios.put(uploadUrl, imageBuffer, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/octet-stream'
+        }
+      });
+      console.log('✅ Image uploaded successfully to LinkedIn.');
+    }
+
+    // Step 3: Create the UGC Post
+    const shareContent: any = {
+      shareCommentary: { text },
+      shareMediaCategory: assetUrn ? 'IMAGE' : 'NONE',
+    };
+
+    if (assetUrn) {
+      shareContent.media = [
+        {
+          status: 'READY',
+          media: assetUrn,
+        },
+      ];
+    }
+
     await axios.post(
       'https://api.linkedin.com/v2/ugcPosts',
       {
         author: `urn:li:person:${personId}`,
         lifecycleState: 'PUBLISHED',
         specificContent: {
-          'com.linkedin.ugc.ShareContent': {
-            shareCommentary: { text },
-            shareMediaCategory: 'NONE',
-          },
+          'com.linkedin.ugc.ShareContent': shareContent,
         },
         visibility: {
           'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC',
         },
       },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'X-Restli-Protocol-Version': '2.0.0',
-        },
-      }
+      { headers }
     );
     console.log('✅ Posted to LinkedIn (personal profile: Sivaji Raja)');
   } catch (err: unknown) {
