@@ -1,0 +1,327 @@
+{
+  "named_endpoints": {
+    "/remove_tips": {
+      "parameters": [],
+      "returns": [
+        {
+          "label": "InstantID Usage Tips",
+          "type": "string",
+          "python_type": {
+            "type": "str",
+            "description": ""
+          },
+          "component": "Markdown"
+        }
+      ],
+      "type": {
+        "generator": false,
+        "cancel": false
+      }
+    },
+    "/generate_image": {
+      "parameters": [
+        {
+          "label": "Upload a photo of your face",
+          "parameter_name": "face_image_path",
+          "parameter_has_default": false,
+          "parameter_default": null,
+          "type": "Blob | File | Buffer",
+          "python_type": {
+            "type": "filepath",
+            "description": ""
+          },
+          "component": "Image",
+          "example_input": {
+            "path": "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png",
+            "meta": {
+              "_type": "gradio.FileData"
+            },
+            "orig_name": "bus.png",
+            "url": "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png"
+          }
+        },
+        {
+          "label": "Upload a reference pose image (Optional)",
+          "parameter_name": "pose_image_path",
+          "parameter_has_default": false,
+          "parameter_default": null,
+          "type": "Blob | File | Buffer",
+          "python_type": {
+            "type": "filepath",
+            "description": ""
+          },
+          "component": "Image",
+          "example_input": {
+            "path": "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png",
+            "meta": {
+              "_type": "gradio.FileData"
+            },
+            "orig_name": "bus.png",
+            "url": "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png"
+          }
+        },
+        {
+          "label": "Prompt",
+          "parameter_name": "prompt",
+          "parameter_has_default": true,
+          "parameter_default": "",
+          "type": "string",
+          "python_type": {
+            "type": "str",
+            "description": ""
+          },
+          "component": "Textbox",
+          "example_input": "Hello!!"
+        },
+        {
+          "label": "Negative Prompt",
+          "parameter_name": "negative_prompt",
+          "parameter_has_default": true,
+          "parameter_default": "(lowres, low quality, worst quality:1.2), (text:1.2), watermark, (frame:1.2), deformed, ugly, deformed eyes, blur, out of focus, blurry, deformed cat, deformed, photo, anthropomorphic cat, monochrome, pet collar, gun, weapon, blue, 3d, drones, drone, buildings in background, green",
+          "type": "string",
+          "python_type": {
+            "type": "str",
+            "description": ""
+          },
+          "component": "Textbox",
+          "example_input": "Hello!!"
+        },
+        {
+          "label": "Style template",
+          "parameter_name": "style_name",
+          "parameter_has_default": true,
+          "parameter_default": "Spring Festival",
+          "type": "string",
+          "python_type": {
+            "type": "Literal['(No style)', 'Spring Festival', 'Watercolor', 'Film Noir', 'Neon', 'Jungle', 'Mars', 'Vibrant Color', 'Snow', 'Line art']",
+            "description": ""
+          },
+          "component": "Dropdown",
+          "example_input": "(No style)"
+        },
+        {
+          "label": "Number of sample steps",
+          "parameter_name": "num_steps",
+          "parameter_has_default": true,
+          "parameter_default": 30,
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 1 and 100"
+          },
+          "component": "Slider",
+          "example_input": 1,
+          "description": "numeric value between 1 and 100"
+        },
+        {
+          "label": "IdentityNet strength (for fidelity)",
+          "parameter_name": "identitynet_strength_ratio",
+          "parameter_has_default": true,
+          "parameter_default": 0.8,
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 0 and 1.5"
+          },
+          "component": "Slider",
+          "example_input": 0,
+          "description": "numeric value between 0 and 1.5"
+        },
+        {
+          "label": "Image adapter strength (for detail)",
+          "parameter_name": "adapter_strength_ratio",
+          "parameter_has_default": true,
+          "parameter_default": 0.8,
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 0 and 1.5"
+          },
+          "component": "Slider",
+          "example_input": 0,
+          "description": "numeric value between 0 and 1.5"
+        },
+        {
+          "label": "Canny strength",
+          "parameter_name": "canny_strength",
+          "parameter_has_default": true,
+          "parameter_default": 0.4,
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 0 and 1.5"
+          },
+          "component": "Slider",
+          "example_input": 0,
+          "description": "numeric value between 0 and 1.5"
+        },
+        {
+          "label": "Depth strength",
+          "parameter_name": "depth_strength",
+          "parameter_has_default": true,
+          "parameter_default": 0.4,
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 0 and 1.5"
+          },
+          "component": "Slider",
+          "example_input": 0,
+          "description": "numeric value between 0 and 1.5"
+        },
+        {
+          "label": "Controlnet",
+          "parameter_name": "controlnet_selection",
+          "parameter_has_default": true,
+          "parameter_default": [
+            "depth"
+          ],
+          "type": "",
+          "python_type": {
+            "type": "List[Literal['canny', 'depth']]",
+            "description": ""
+          },
+          "component": "Checkboxgroup",
+          "example_input": [
+            "canny"
+          ]
+        },
+        {
+          "label": "Guidance scale",
+          "parameter_name": "guidance_scale",
+          "parameter_has_default": true,
+          "parameter_default": 5,
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 0.1 and 20.0"
+          },
+          "component": "Slider",
+          "example_input": 0.1,
+          "description": "numeric value between 0.1 and 20.0"
+        },
+        {
+          "label": "Seed",
+          "parameter_name": "seed",
+          "parameter_has_default": true,
+          "parameter_default": 42,
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 0 and 2147483647"
+          },
+          "component": "Slider",
+          "example_input": 0,
+          "description": "numeric value between 0 and 2147483647"
+        },
+        {
+          "label": "Schedulers",
+          "parameter_name": "scheduler",
+          "parameter_has_default": true,
+          "parameter_default": "EulerDiscreteScheduler",
+          "type": "string",
+          "python_type": {
+            "type": "Literal['DEISMultistepScheduler', 'HeunDiscreteScheduler', 'EulerDiscreteScheduler', 'DPMSolverMultistepScheduler', 'DPMSolverMultistepScheduler-Karras', 'DPMSolverMultistepScheduler-Karras-SDE']",
+            "description": ""
+          },
+          "component": "Dropdown",
+          "example_input": "DEISMultistepScheduler"
+        },
+        {
+          "label": "Enable Fast Inference with LCM",
+          "parameter_name": "enable_LCM",
+          "parameter_has_default": true,
+          "parameter_default": false,
+          "type": "boolean",
+          "python_type": {
+            "type": "bool",
+            "description": ""
+          },
+          "component": "Checkbox",
+          "example_input": true
+        },
+        {
+          "label": "Enhance non-face region",
+          "parameter_name": "enhance_face_region",
+          "parameter_has_default": true,
+          "parameter_default": true,
+          "type": "boolean",
+          "python_type": {
+            "type": "bool",
+            "description": ""
+          },
+          "component": "Checkbox",
+          "example_input": true
+        }
+      ],
+      "returns": [
+        {
+          "label": "Generated Images",
+          "type": "string",
+          "python_type": {
+            "type": "filepath",
+            "description": ""
+          },
+          "component": "Image"
+        },
+        {
+          "label": "InstantID Usage Tips",
+          "type": "string",
+          "python_type": {
+            "type": "str",
+            "description": ""
+          },
+          "component": "Markdown"
+        }
+      ],
+      "type": {
+        "generator": false,
+        "cancel": false
+      }
+    },
+    "/toggle_lcm_ui": {
+      "parameters": [
+        {
+          "label": "Enable Fast Inference with LCM",
+          "parameter_name": "value",
+          "parameter_has_default": true,
+          "parameter_default": false,
+          "type": "boolean",
+          "python_type": {
+            "type": "bool",
+            "description": ""
+          },
+          "component": "Checkbox",
+          "example_input": true
+        }
+      ],
+      "returns": [
+        {
+          "label": "Number of sample steps",
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 1 and 100"
+          },
+          "component": "Slider",
+          "description": "numeric value between 1 and 100"
+        },
+        {
+          "label": "Guidance scale",
+          "type": "number",
+          "python_type": {
+            "type": "float",
+            "description": "numeric value between 0.1 and 20.0"
+          },
+          "component": "Slider",
+          "description": "numeric value between 0.1 and 20.0"
+        }
+      ],
+      "type": {
+        "generator": false,
+        "cancel": false
+      }
+    }
+  },
+  "unnamed_endpoints": {}
+}

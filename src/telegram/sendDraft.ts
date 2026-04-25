@@ -40,7 +40,11 @@ export async function sendDraftToFounder(posts: GeneratedPosts): Promise<void> {
   await bot.sendMessage(chatId, `📸 <b>INSTAGRAM</b>\n\n${h(posts.instagram)}`, html);
   await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(posts.linkedin)}`, html);
   await bot.sendMessage(chatId, `🐦 <b>TWITTER / X</b>\n\n${h(posts.twitter)}`, html);
-  await bot.sendMessage(chatId, `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(posts.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`, html);
+  if (posts.imageBuffer) {
+    await bot.sendPhoto(chatId, posts.imageBuffer, { caption: `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\n${h(posts.imagePrompt)}`, parse_mode: 'HTML' });
+  } else {
+    await bot.sendMessage(chatId, `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(posts.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`, html);
+  }
 
   console.log('✅ Draft sent to Telegram successfully');
 }
@@ -62,11 +66,15 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
   await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(post.linkedin)}`,   { parse_mode: 'HTML' });
   await bot.sendMessage(chatId, `🐦 <b>TWITTER / X</b>\n\n${h(post.twitter)}`, { parse_mode: 'HTML' });
 
-  // Message 5: image prompt
-  await bot.sendMessage(chatId,
-    `🎨 <b>IMAGE PROMPT</b> — ${post.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(post.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`,
-    { parse_mode: 'HTML' }
-  );
+  // Message 5: image prompt or actual image
+  if (post.imageBuffer) {
+    await bot.sendPhoto(chatId, post.imageBuffer, { caption: `🎨 <b>IMAGE PROMPT</b> — ${post.imageStyle}\n\n${h(post.imagePrompt)}`, parse_mode: 'HTML' });
+  } else {
+    await bot.sendMessage(chatId,
+      `🎨 <b>IMAGE PROMPT</b> — ${post.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(post.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`,
+      { parse_mode: 'HTML' }
+    );
+  }
 
   console.log('✅ Commentary draft sent to Telegram');
 }

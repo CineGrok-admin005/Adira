@@ -53,6 +53,7 @@ export interface GeneratedPosts {
   imagePrompt: string;
   imageStyle: 'Cinematic' | 'Moody' | 'Surreal';
   audience: AudienceMode;
+  imageBuffer?: Buffer;
 }
 
 export interface YouTubeVideo {
@@ -91,6 +92,7 @@ export interface CommentaryPost {
   imagePrompt: string;
   imageStyle: 'Cinematic' | 'Moody' | 'Surreal';
   audience: AudienceMode;
+  imageBuffer?: Buffer;
 }
 
 export interface MilestoneEvent {

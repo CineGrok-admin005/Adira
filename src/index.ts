@@ -11,6 +11,7 @@ import { fetchYouTubeVideos } from './news/fetchYouTube';
 import { fetchGoogleNews } from './news/fetchGoogleNews';
 import { crossVerify } from './news/crossVerify';
 import { generateCommentary } from './news/generateCommentary';
+import { generateAdiraImage } from './image/generateImage';
 import { startScheduler } from './scheduler';
 import { postToTwitter } from './social/twitter';
 import { postToLinkedIn, checkLinkedInTokenExpiry } from './social/linkedin';
@@ -70,6 +71,10 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     console.log('✍️  ADIRA is writing posts...');
     const posts = await generatePosts(milestone);
     console.log(`   Audience: ${posts.audience} | Image style: ${posts.imageStyle}`);
+
+    if (!dryRun) {
+      posts.imageBuffer = await generateAdiraImage(posts.imagePrompt, posts.imageStyle) || undefined;
+    }
 
     if (dryRun) {
       console.log('\n══════════════════════════════════════════');
@@ -154,6 +159,8 @@ export async function runCommentaryAgent(): Promise<void> {
       console.log('💤 ADIRA skipped — no story worth commenting on today.');
       return;
     }
+
+    post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle) || undefined;
 
     console.log('📱 Sending commentary draft to Telegram...');
     await sendCommentaryDraft(post);
