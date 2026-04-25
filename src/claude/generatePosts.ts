@@ -57,7 +57,20 @@ Format EXACTLY as follows (keep all labels):
 <Under 240 characters. One punch. Max 2 hashtags>
 
 [IMAGE_PROMPT]
-<One detailed image generation prompt that captures the mood of today's posts. Indian aesthetic, film world, cinematic. Be specific about style, lighting, composition>
+Write a fully filled ChatGPT image prompt in EXACTLY this format — no placeholders, every field answered:
+
+POST CATEGORY: [Milestone / Commentary / News / Community / Industry Reaction / Update]
+WHAT HAPPENED: [one sentence]
+WHY THIS MATTERS: [one sentence about emerging filmmakers]
+SHOULD ADIRA BE IN THIS? Yes
+ADIRA'S ROLE: [Reporting / Reacting / Observing / Investigating / Announcing]
+SCENE: [specific environment]
+ACTION: [exactly what she is doing]
+EXPRESSION: [Focused / Reflective / Sharp / Curious / Concerned]
+WARDROBE: [specific clothing]
+PROPS: [specific props including press lanyard reading "ADIRA / CineGrok"]
+LIGHTING: [specific lighting]
+MOOD: [Excited / Serious / Reflective / Intense]
 
 [IMAGE_STYLE]
 <Pick one: Cinematic / Moody / Surreal — based on today's tone>

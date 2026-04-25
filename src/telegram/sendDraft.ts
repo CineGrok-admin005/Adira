@@ -9,6 +9,20 @@ function h(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+const CHARACTER_LOCK = `
+STRICT CHARACTER LOCK:
+Use uploaded ADIRA reference image.
+Treat ADIRA as a persistent character.
+Do not redesign face.
+Do not reinterpret facial anatomy.
+Preserve exact identity.
+
+CAN CHANGE: clothes, hairstyle, pose, environment
+CANNOT CHANGE: face structure, eyes, jawline, skin tone, core identity
+
+STYLE: Editorial illustration — Graphic novel × Indian cinema poster
+FORMAT: Square 1:1 | No text | Cinematic composition | High detail`;
+
 const AUDIENCE_LABEL: Record<string, string> = {
   general:   '🌐 General',
   filmmaker: '🎬 Filmmaker',
@@ -26,7 +40,7 @@ export async function sendDraftToFounder(posts: GeneratedPosts): Promise<void> {
   await bot.sendMessage(chatId, `📸 <b>INSTAGRAM</b>\n\n${h(posts.instagram)}`, html);
   await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(posts.linkedin)}`, html);
   await bot.sendMessage(chatId, `🐦 <b>TWITTER / X</b>\n\n${h(posts.twitter)}`, html);
-  await bot.sendMessage(chatId, `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\n${h(posts.imagePrompt)}`, html);
+  await bot.sendMessage(chatId, `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(posts.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`, html);
 
   console.log('✅ Draft sent to Telegram successfully');
 }
@@ -50,7 +64,7 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
 
   // Message 5: image prompt
   await bot.sendMessage(chatId,
-    `🎨 <b>IMAGE PROMPT</b> — ${post.imageStyle}\n\n${h(post.imagePrompt)}`,
+    `🎨 <b>IMAGE PROMPT</b> — ${post.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(post.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`,
     { parse_mode: 'HTML' }
   );
 

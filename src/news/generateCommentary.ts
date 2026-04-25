@@ -68,7 +68,20 @@ Under 240 characters. Sharp take. Max 2 hashtags.
 One word: e.g. Observational, Sharp, Warm, Poetic, Dry, Questioning
 
 [IMAGE_PROMPT]
-A visual that captures the mood of ARIA's commentary — NOT a literal image of the story. Cinematic scene, no text, no real faces.
+Write a fully filled ChatGPT image prompt in EXACTLY this format — no placeholders, every field answered:
+
+POST CATEGORY: [Milestone / Commentary / News / Community / Industry Reaction / Update]
+WHAT HAPPENED: [one sentence]
+WHY THIS MATTERS: [one sentence about emerging filmmakers]
+SHOULD ADIRA BE IN THIS? Yes
+ADIRA'S ROLE: [Reporting / Reacting / Observing / Investigating / Announcing]
+SCENE: [specific environment]
+ACTION: [exactly what she is doing]
+EXPRESSION: [Focused / Reflective / Sharp / Curious / Concerned]
+WARDROBE: [specific clothing]
+PROPS: [specific props including press lanyard reading "ADIRA / CineGrok"]
+LIGHTING: [specific lighting]
+MOOD: [Excited / Serious / Reflective / Intense]
 
 [IMAGE_STYLE]
 One of: Cinematic / Moody / Surreal`;
