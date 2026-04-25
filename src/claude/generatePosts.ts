@@ -13,7 +13,7 @@ const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function generatePosts(event: MilestoneEvent): Promise<GeneratedPosts> {
   const { data } = event;
-  const memory = readMemory();
+  const memory = await readMemory();
   const audience = getAudienceMode();
   const memoryContext = formatMemoryContext(memory);
 
@@ -37,10 +37,22 @@ ${audienceContext(audience)}
 ## YOUR RECENT POST HISTORY — do not repeat any tone or opening structure below
 ${memoryContext}
 
-## YOUR TASK
-Write 3 posts for today's milestone. Each platform gets a completely different tone and angle — not just reformatted versions of the same post.
+## BEFORE YOU WRITE — find the human truth first
 
-Choose a different tone from your rotation for each platform. State which tone you used in the [TONE] tag.
+Look at today's data. Find the one fact that would make someone who cares about Indian cinema stop scrolling.
+
+Not the number. What the number means.
+
+${data.recentPublicJoiners.filter(j => j.city).length > 0
+  ? `${data.recentPublicJoiners.filter(j => j.city).map(j => `${j.firstName} (${j.primaryRole}) from ${j.city}`).join(', ')} just joined CineGrok. These are real people in real cities who decided to bet on themselves. One of them might be the filmmaker everyone talks about in five years. Start from that.`
+  : `${data.newToday} filmmaker(s) joined CineGrok today. Each one is a real person who decided — today — that their career in Indian cinema is worth building. Start from that.`}
+
+Feel it first. Then open your notebook. The format comes after the feeling, never before.
+
+## YOUR TASK
+Write 3 posts — each from a completely different emotional angle. Not the same post reformatted. Different entry points, different feelings, different readers left with different things.
+
+State the tone you used in the [TONE] tag.
 
 Format EXACTLY as follows (keep all labels):
 
@@ -120,9 +132,9 @@ RULES:
   const today = new Date().toISOString().split('T')[0];
 
   // Write to memory per platform
-  writeMemory('instagram', { date: today, milestoneType: event.type, audience, toneUsed: instaTone,   openingLine: instagram.split('\n')[0] });
-  writeMemory('linkedin',  { date: today, milestoneType: event.type, audience, toneUsed: linkedTone,  openingLine: linkedin.split('\n')[0]  });
-  writeMemory('twitter',   { date: today, milestoneType: event.type, audience, toneUsed: twitterTone, openingLine: twitter.split('\n')[0]   });
+  await writeMemory('instagram', { date: today, milestoneType: event.type, audience, toneUsed: instaTone,   openingLine: instagram.split('\n')[0] });
+  await writeMemory('linkedin',  { date: today, milestoneType: event.type, audience, toneUsed: linkedTone,  openingLine: linkedin.split('\n')[0]  });
+  await writeMemory('twitter',   { date: today, milestoneType: event.type, audience, toneUsed: twitterTone, openingLine: twitter.split('\n')[0]   });
 
   return {
     instagram,

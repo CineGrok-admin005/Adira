@@ -12,7 +12,7 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 export async function generateCommentary(stories: VerifiedStory[]): Promise<CommentaryPost | null> {
   if (stories.length === 0) return null;
 
-  const memory = readMemory();
+  const memory = await readMemory();
   const audience = getAudienceMode();
 
   const storyList = stories
@@ -38,17 +38,22 @@ ${memory.instagram.length > 0 || memory.linkedin.length > 0 || memory.twitter.le
 
 ${storyList}
 
+## BEFORE YOU WRITE — find the angle that matters
+
+Read the stories. Find the one with something in it for the filmmaker who is three steps behind the people in the headline.
+
+Not "here's what happened." Not "here's why this is big."
+
+Ask: what does this mean for the actor between auditions right now? The director on their first short? The cinematographer still building their reel? If you can answer that specifically — that's your post.
+
+If a story has no answer to that question, skip it.
+
 ## YOUR TASK
 
-Pick ONE story from the list above that is worth commenting on. Choose based on:
-- Is it about craft, filmmaking, careers, the industry, emerging talent, or cinema culture?
-- Does it create an opening for ARIA to add a perspective that matters to emerging filmmakers on CineGrok?
-- Skip anything that is personal drama, controversy, politics, or tabloid gossip.
-- Prefer stories confirmed by more news outlets (higher cross-source confirmation).
+Pick ONE story worth commenting on. Skip personal drama, controversy, politics, tabloid.
+Each story is verified — YouTube AND Indian press both covered it.
 
-Each story has been verified: a YouTube channel covered it AND at least one Indian news outlet confirmed it independently. Reference the story naturally — you are a reporter responding to something in the conversation, not writing in a vacuum.
-
-If none of the stories are worth commenting on, write only "NO_WORTHWHILE_STORY" and nothing else.
+If none are worth commenting on, write only "NO_WORTHWHILE_STORY" and nothing else.
 
 Otherwise write your commentary posts. Format your response EXACTLY like this:
 
@@ -129,9 +134,11 @@ One of: Cinematic / Moody / Surreal`;
   const today = new Date().toISOString().split('T')[0];
   const openingLine = instagram.split('\n')[0].slice(0, 80);
 
-  writeMemory('instagram', { date: today, milestoneType: 'COMMENTARY', audience, toneUsed: tone, openingLine });
-  writeMemory('linkedin',  { date: today, milestoneType: 'COMMENTARY', audience, toneUsed: tone, openingLine });
-  writeMemory('twitter',   { date: today, milestoneType: 'COMMENTARY', audience, toneUsed: tone, openingLine });
+  await Promise.all([
+    writeMemory('instagram', { date: today, milestoneType: 'COMMENTARY', audience, toneUsed: tone, openingLine }),
+    writeMemory('linkedin',  { date: today, milestoneType: 'COMMENTARY', audience, toneUsed: tone, openingLine }),
+    writeMemory('twitter',   { date: today, milestoneType: 'COMMENTARY', audience, toneUsed: tone, openingLine }),
+  ]);
 
   return {
     instagram,
