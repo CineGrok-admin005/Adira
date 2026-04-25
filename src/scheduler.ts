@@ -1,11 +1,11 @@
 import cron from 'node-cron';
 import { runGrowthAgent, runCommentaryAgent } from './index';
 
-// 8:00 AM IST = 2:30 AM UTC
-// 10:00 AM IST = 4:30 AM UTC
+// timezone: 'Asia/Kolkata' means cron expressions are read in IST directly
+// So '0 8 * * *' = 8:00 AM IST, '0 10 * * *' = 10:00 AM IST
 export function startScheduler(): void {
   cron.schedule(
-    '30 2 * * *',
+    '0 8 * * *',
     async () => {
       console.log(`[${new Date().toISOString()}] ⏰ Type 1 — Growth report running...`);
       await runGrowthAgent();
@@ -14,7 +14,7 @@ export function startScheduler(): void {
   );
 
   cron.schedule(
-    '30 4 * * *',
+    '0 10 * * *',
     async () => {
       console.log(`[${new Date().toISOString()}] ⏰ Type 2 — Commentary running...`);
       await runCommentaryAgent();
