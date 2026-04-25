@@ -33,6 +33,18 @@ export function sanitizeForPublic(data: GrowthData): GrowthData {
           state: data.firstFromNewCity.state,
         }
       : null,
+
+    // Engagement stats — aggregated, no individual PII
+    totalProfileViews: data.totalProfileViews,
+    totalProfileClicks: data.totalProfileClicks,
+    weeklyProfileViews: data.weeklyProfileViews,
+    openToCollaborations: data.openToCollaborations,
+    uniqueCities: data.uniqueCities,
+    uniqueStates: data.uniqueStates,
+    foundingMemberCount: data.foundingMemberCount,
+    roleBreakdown: data.roleBreakdown,
+    topGenres: data.topGenres,
+    multiRoleCount: data.multiRoleCount,
   };
 
   // Final safety scan — reject anything that looks like PII slipping through

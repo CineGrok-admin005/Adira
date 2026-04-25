@@ -1,13 +1,32 @@
 export type AudienceMode = 'general' | 'filmmaker' | 'industry';
 
 export interface GrowthData {
+  // Signup counts
   totalRealUsers: number;
   newToday: number;
   newThisWeek: number;
+
+  // Recent joiners
   recentPublicJoiners: PublicJoiner[];
   firstFemaleFilmmaker: PublicJoiner | null;
   firstFromNewCity: PublicJoiner | null;
   milestoneHit: number | null;
+
+  // Engagement
+  totalProfileViews: number;
+  totalProfileClicks: number;
+  weeklyProfileViews: number;   // views on profiles published in the last 7 days
+
+  // Platform depth
+  openToCollaborations: number; // filmmakers actively open to working together
+  uniqueCities: number;         // how many cities CineGrok covers
+  uniqueStates: number;         // how many Indian states
+  foundingMemberCount: number;  // profiles with a founding_member_number
+
+  // Community composition
+  roleBreakdown: Record<string, number>;  // primary role → count
+  topGenres: string[];                    // top 5 genres across all filmmakers
+  multiRoleCount: number;                 // filmmakers with secondary roles too
 }
 
 export interface PublicJoiner {
@@ -68,7 +87,16 @@ export interface CommentaryPost {
 
 export interface MilestoneEvent {
   hasMilestone: boolean;
-  type: 'COUNT_MILESTONE' | 'FIRST_FEMALE' | 'FIRST_NEW_CITY' | 'DAILY_UPDATE' | 'WEEKLY_SUMMARY' | 'NONE';
+  type:
+    | 'COUNT_MILESTONE'
+    | 'FIRST_FEMALE'
+    | 'FIRST_NEW_CITY'
+    | 'DAILY_UPDATE'
+    | 'WEEKLY_SUMMARY'
+    | 'VIEW_MILESTONE'
+    | 'COLLABORATION_MILESTONE'
+    | 'CITY_MILESTONE'
+    | 'NONE';
   message: string;
   data: GrowthData;
 }

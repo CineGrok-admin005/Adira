@@ -24,12 +24,32 @@ export async function generatePosts(event: MilestoneEvent): Promise<GeneratedPos
         .join(', ')}`
     : '';
 
+  const roleLines = Object.entries(data.roleBreakdown)
+    .sort((a, b) => b[1] - a[1])
+    .map(([role, count]) => `  ${role}: ${count}`)
+    .join('\n');
+
   const userPrompt = `## TODAY'S DATA
-- Total real filmmakers on CineGrok: ${data.totalRealUsers}
-- New joiners today: ${data.newToday}
-- New joiners this week: ${data.newThisWeek}
+
+Signups:
+- Total real filmmakers: ${data.totalRealUsers}
+- New today: ${data.newToday} | New this week: ${data.newThisWeek}
 - Milestone: ${event.message}
 ${joinersLine}
+
+Platform reach:
+- Cities covered: ${data.uniqueCities} | States: ${data.uniqueStates}
+- Founding members: ${data.foundingMemberCount}
+
+Engagement:
+- Total profile views (all time): ${data.totalProfileViews}
+- Profile views this week: ${data.weeklyProfileViews}
+- Filmmakers open to collaborations right now: ${data.openToCollaborations}
+- Filmmakers with multiple roles: ${data.multiRoleCount}
+
+Community composition:
+${roleLines || '  (data unavailable)'}
+Top genres on CineGrok: ${data.topGenres.length > 0 ? data.topGenres.join(', ') : 'not yet available'}
 
 ## AUDIENCE MODE TODAY
 ${audienceContext(audience)}

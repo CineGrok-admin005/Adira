@@ -170,16 +170,88 @@ export async function fetchGrowthData(): Promise<GrowthData> {
     }
   }
 
-  // --- Step 6: Milestone check against total real user count ---
-  const MILESTONE_NUMBERS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000]; // 5 is temporary for testing, remove after
+  // --- Step 6: Milestone check ---
+  const MILESTONE_NUMBERS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
   const total = totalRealUsers || 0;
   const joinedToday = newToday || 0;
-  // Normally: only fire if the milestone was crossed today (total crossed threshold since yesterday)
-  // TEST OVERRIDE: if --test-milestone flag set, fire for the nearest milestone at or below total
   const isTestMilestone = process.argv.includes('--test-milestone');
   const milestoneHit = isTestMilestone
     ? (MILESTONE_NUMBERS.filter(m => total >= m).pop() ?? null)
     : (MILESTONE_NUMBERS.find(m => total >= m && total - joinedToday < m) ?? null);
+
+  // --- Step 7: Fetch all real published filmmakers for KPI aggregation ---
+  const { data: allFilmmakers } = await anonClient
+    .from('filmmakers')
+    .select(
+      'profile_views, primary_roles, secondary_roles, current_city, current_state, ' +
+      'open_to_collaborations, preferred_genres, published_at'
+    )
+    .eq('is_published', true)
+    .in('subscription_status', REAL_STATUSES) as { data: Array<{
+      profile_views: number | null;
+      primary_roles: string[] | null;
+      secondary_roles: string[] | null;
+      current_city: string | null;
+      current_state: string | null;
+      open_to_collaborations: boolean | string | null;
+      preferred_genres: string[] | null;
+      published_at: string | null;
+    }> | null };
+
+  const all = allFilmmakers || [];
+
+  // Profile views & clicks (summed across all real published filmmakers)
+  const totalProfileViews = all.reduce((sum, f) => sum + (f.profile_views || 0), 0);
+  const totalProfileClicks = 0; // profile_clicks column not confirmed — default to 0
+
+  // Views on profiles published within last 7 days
+  const weeklyProfileViews = all
+    .filter(f => f.published_at && new Date(f.published_at) >= new Date(oneWeekAgo))
+    .reduce((sum, f) => sum + (f.profile_views || 0), 0);
+
+  // Open to collaborations
+  const openToCollaborations = all.filter(f =>
+    f.open_to_collaborations === true ||
+    (typeof f.open_to_collaborations === 'string' &&
+      f.open_to_collaborations.toLowerCase().includes('yes'))
+  ).length;
+
+  // Unique cities and states
+  const uniqueCities = new Set(all.map(f => f.current_city).filter(Boolean)).size;
+  const uniqueStates = new Set(all.map(f => f.current_state).filter(Boolean)).size;
+
+  // Role breakdown — count by primary role
+  const roleBreakdown: Record<string, number> = {};
+  for (const f of all) {
+    const role = extractPrimaryRole(f.primary_roles);
+    if (role && role !== 'Filmmaker') {
+      roleBreakdown[role] = (roleBreakdown[role] || 0) + 1;
+    }
+  }
+
+  // Top genres — flatten and count across all filmmakers
+  const genreCounts: Record<string, number> = {};
+  for (const f of all) {
+    const genres: string[] = Array.isArray(f.preferred_genres) ? f.preferred_genres : [];
+    for (const g of genres) {
+      if (g) genreCounts[g] = (genreCounts[g] || 0) + 1;
+    }
+  }
+  const topGenres = Object.entries(genreCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([genre]) => genre);
+
+  // Multi-role filmmakers (have at least one secondary role)
+  const multiRoleCount = all.filter(f =>
+    Array.isArray(f.secondary_roles) && f.secondary_roles.length > 0
+  ).length;
+
+  // Founding members count
+  const { count: foundingMemberCount } = await serviceClient
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .not('founding_member_number', 'is', null);
 
   return {
     totalRealUsers: total,
@@ -189,5 +261,15 @@ export async function fetchGrowthData(): Promise<GrowthData> {
     firstFemaleFilmmaker,
     firstFromNewCity,
     milestoneHit,
+    totalProfileViews,
+    totalProfileClicks,
+    weeklyProfileViews,
+    openToCollaborations,
+    uniqueCities,
+    uniqueStates,
+    foundingMemberCount: foundingMemberCount || 0,
+    roleBreakdown,
+    topGenres,
+    multiRoleCount,
   };
 }

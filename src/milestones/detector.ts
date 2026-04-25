@@ -1,7 +1,16 @@
 import { GrowthData, MilestoneEvent } from '../types';
 
+const VIEW_MILESTONES         = [100, 250, 500, 1000, 2500, 5000, 10000];
+const COLLABORATION_MILESTONES = [5, 10, 25, 50, 100];
+const CITY_MILESTONES          = [5, 10, 15, 20, 25, 30, 50];
+
+function crossedToday(milestones: number[], current: number, addedToday: number): number | null {
+  return milestones.find(m => current >= m && current - addedToday < m) ?? null;
+}
+
 export function detectMilestone(data: GrowthData): MilestoneEvent {
-  // Priority 1: Count milestone (e.g. first 10, 25, 50, 100 real users)
+
+  // Priority 1: Signup count milestone
   if (data.milestoneHit) {
     return {
       hasMilestone: true,
@@ -11,7 +20,7 @@ export function detectMilestone(data: GrowthData): MilestoneEvent {
     };
   }
 
-  // Priority 2: First female filmmaker (detected via pronouns containing 'she')
+  // Priority 2: First female filmmaker
   if (data.firstFemaleFilmmaker && data.newToday > 0) {
     const f = data.firstFemaleFilmmaker;
     return {
@@ -22,7 +31,7 @@ export function detectMilestone(data: GrowthData): MilestoneEvent {
     };
   }
 
-  // Priority 3: First filmmaker from a city new to the platform
+  // Priority 3: First filmmaker from a new city
   if (data.firstFromNewCity) {
     const c = data.firstFromNewCity;
     return {
@@ -33,23 +42,45 @@ export function detectMilestone(data: GrowthData): MilestoneEvent {
     };
   }
 
-  // Priority 4: Daily update — any real new joiners today
-  if (data.newToday > 0) {
+  // Priority 4: Profile view milestone crossed today
+  const viewMilestone = crossedToday(VIEW_MILESTONES, data.totalProfileViews, data.weeklyProfileViews);
+  if (viewMilestone) {
     return {
       hasMilestone: true,
-      type: 'DAILY_UPDATE',
-      message: `${data.newToday} new filmmaker(s) joined CineGrok today. Total community: ${data.totalRealUsers}.`,
+      type: 'VIEW_MILESTONE',
+      message: `CineGrok profiles have been viewed ${viewMilestone.toLocaleString()} times in total. Someone is always watching.`,
       data,
     };
   }
 
-  // Priority 5: Weekly summary on Mondays
+  // Priority 5: City count milestone
+  const cityMilestone = CITY_MILESTONES.find(m => data.uniqueCities === m);
+  if (cityMilestone) {
+    return {
+      hasMilestone: true,
+      type: 'CITY_MILESTONE',
+      message: `CineGrok now has filmmakers from ${cityMilestone} cities across India.`,
+      data,
+    };
+  }
+
+  // Priority 6: Daily update — any new joiners today
+  if (data.newToday > 0) {
+    return {
+      hasMilestone: true,
+      type: 'DAILY_UPDATE',
+      message: `${data.newToday} new filmmaker(s) joined CineGrok today. Total: ${data.totalRealUsers}.`,
+      data,
+    };
+  }
+
+  // Priority 7: Weekly summary on Mondays
   const today = new Date().getDay();
   if (today === 1 && data.newThisWeek > 0) {
     return {
       hasMilestone: true,
       type: 'WEEKLY_SUMMARY',
-      message: `${data.newThisWeek} filmmakers joined CineGrok this week. The community keeps growing!`,
+      message: `${data.newThisWeek} filmmakers joined CineGrok this week. ${data.totalProfileViews} total profile views. ${data.openToCollaborations} open to collaborations.`,
       data,
     };
   }
