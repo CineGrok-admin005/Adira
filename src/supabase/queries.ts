@@ -48,15 +48,43 @@ function extractPrimaryRole(roles: string[] | null): string {
   return roles[0];
 }
 
+// Validate URL actually belongs to the expected platform
+function validatePlatformUrl(url: string | null, platform: string): boolean {
+  if (!url || typeof url !== 'string') return false;
+  const domains: Record<string, string[]> = {
+    instagram: ['instagram.com'],
+    twitter:   ['twitter.com', 'x.com'],
+    linkedin:  ['linkedin.com'],
+    youtube:   ['youtube.com', 'youtu.be'],
+  };
+  const allowed = domains[platform] || [];
+  return allowed.some(d => url.toLowerCase().includes(d));
+}
+
 function extractHandle(url: string | null, platform: 'instagram' | 'twitter'): string | null {
-  if (!url) return null;
+  if (!url || !validatePlatformUrl(url, platform)) return null;
   const patterns: Record<string, RegExp> = {
-    instagram: /instagram\.com\/([^/?#]+)/,
-    twitter:   /(?:twitter|x)\.com\/([^/?#]+)/,
+    instagram: /instagram\.com\/([^/?#\s]+)/,
+    twitter:   /(?:twitter|x)\.com\/([^/?#\s]+)/,
   };
   const match = url.match(patterns[platform]);
-  if (!match || !match[1] || match[1] === 'intent') return null;
-  return `@${match[1]}`;
+  if (!match || !match[1]) return null;
+  // Strip trailing slash artifacts, filter out non-handle paths
+  const handle = match[1].replace(/\/$/, '');
+  if (['intent', 'share', 'p', 'reel', 'stories', 'explore'].includes(handle)) return null;
+  return `@${handle}`;
+}
+
+function extractLinkedInUrl(url: string | null): string | null {
+  if (!url || !validatePlatformUrl(url, 'linkedin')) return null;
+  return url.split('?')[0].replace(/\/$/, ''); // strip query params and trailing slash
+}
+
+// Read social from both raw_form_data.socials.{key} (demo) and raw_form_data.{key} (real)
+function getSocial(rd: Record<string, unknown>, key: string): string | null {
+  const fromSocials = (rd.socials as Record<string, string> | undefined)?.[key] || null;
+  const direct = (rd[key] as string | undefined) || null;
+  return fromSocials || direct || null;
 }
 
 function buildCineGrokUrl(slug: string | null): string {
@@ -131,7 +159,6 @@ export async function fetchGrowthData(): Promise<GrowthData> {
 
   const recentPublicJoiners: PublicJoiner[] = (recentRaw || []).map(f => {
     const rd = f.raw_form_data || {};
-    const socials = (rd.socials || {}) as Record<string, string>;
     const city  = (f.current_city  || rd.currentCity  || rd.current_city  || '') as string;
     const state = (f.current_state || rd.currentState || rd.current_state || '') as string;
     const roles = (rd.primaryRoles || rd.primary_roles || f.primary_roles || []) as string[];
@@ -141,9 +168,9 @@ export async function fetchGrowthData(): Promise<GrowthData> {
       city,
       state,
       cineGrokUrl: buildCineGrokUrl(f.slug),
-      instagramHandle: extractHandle(socials.instagram || null, 'instagram'),
-      linkedinUrl: socials.linkedin ? socials.linkedin : null,
-      twitterHandle: extractHandle(socials.twitter || null, 'twitter'),
+      instagramHandle: extractHandle(getSocial(rd, 'instagram'), 'instagram'),
+      linkedinUrl:     extractLinkedInUrl(getSocial(rd, 'linkedin')),
+      twitterHandle:   extractHandle(getSocial(rd, 'twitter'), 'twitter'),
     };
   });
 
@@ -165,16 +192,16 @@ export async function fetchGrowthData(): Promise<GrowthData> {
     femaleData && femaleData.length > 0
       ? (() => {
           const f = femaleData[0];
-          const socials = ((f.raw_form_data?.socials) || {}) as Record<string, string>;
+          const rd = f.raw_form_data || {};
           return {
             firstName: extractFirstName(f.name),
             primaryRole: extractPrimaryRole(f.primary_roles),
             city: f.current_city || '',
             state: f.current_state || '',
             cineGrokUrl: buildCineGrokUrl(f.slug),
-            instagramHandle: extractHandle(socials.instagram || null, 'instagram'),
-            linkedinUrl: socials.linkedin || null,
-            twitterHandle: extractHandle(socials.twitter || null, 'twitter'),
+            instagramHandle: extractHandle(getSocial(rd, 'instagram'), 'instagram'),
+            linkedinUrl:     extractLinkedInUrl(getSocial(rd, 'linkedin')),
+            twitterHandle:   extractHandle(getSocial(rd, 'twitter'), 'twitter'),
           };
         })()
       : null;
