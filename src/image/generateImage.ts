@@ -1,4 +1,3 @@
-import { Client } from '@gradio/client';
 import { readFileSync } from 'fs';
 import path from 'path';
 
@@ -7,6 +6,9 @@ const ADIRA_IMAGE_PATH = path.resolve(process.cwd(), 'assets', 'adira-avatar.png
 export async function generateAdiraImage(prompt: string, style: string): Promise<Buffer | null> {
   try {
     console.log('🖼️  Generating ADIRA image via PuLID-FLUX...');
+
+    // Dynamic import required — @gradio/client is ESM-only, project is CommonJS
+    const { Client } = await import('@gradio/client');
 
     const app = await Client.connect('yanze/PuLID-FLUX', {
       token: process.env.HUGGINGFACE_API_KEY as `hf_${string}`,
