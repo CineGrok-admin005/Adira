@@ -131,9 +131,9 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
       console.log('🚀 AUTO_POST=true — posting to platforms...');
       try { await postToTwitter(posts.twitter); }
       catch (err) { console.error('❌ Twitter:', err instanceof Error ? err.message : err); }
-      try { await postToLinkedIn(posts.linkedin); }
+      try { await postToLinkedIn(posts.linkedin, posts.imageBuffer); }
       catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
-      
+
       if (backlogId) {
         const { markBacklogItemPosted } = await import('./supabase/queue');
         await markBacklogItemPosted(backlogId);
@@ -215,7 +215,7 @@ export async function runCommentaryAgent(): Promise<void> {
       console.log('🚀 AUTO_POST=true — posting commentary to platforms...');
       try { await postToTwitter(post.twitter); }
       catch (err) { console.error('❌ Twitter:', err instanceof Error ? err.message : err); }
-      try { await postToLinkedIn(post.linkedin); }
+      try { await postToLinkedIn(post.linkedin, post.imageBuffer); }
       catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
       
       if (backlogId) {
