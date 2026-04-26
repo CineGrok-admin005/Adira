@@ -59,7 +59,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     // ── STEP 3: Milestone detection ──
     console.log('🎯 Detecting milestones...');
     const { detectAllMilestones } = await import('./milestones/detector');
-    const { pushToBacklog, getNextFromBacklog, supersedeMilestones, markBacklogItemPosted } = await import('./supabase/queue');
+    const { pushToBacklog, getNextFromBacklog, supersedeMilestones } = await import('./supabase/queue');
 
     const allMilestones = detectAllMilestones(safeData);
     let milestone: MilestoneEvent = allMilestones.length > 0 ? allMilestones[0] : { hasMilestone: false, type: 'NONE' as const, message: '', data: safeData };
@@ -92,7 +92,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     console.log(`   Audience: ${posts.audience} | Image style: ${posts.imageStyle}`);
 
     if (!dryRun) {
-      posts.imageBuffer = await generateAdiraImage(posts.imagePrompt, posts.imageStyle) || undefined;
+      posts.imageBuffer = await generateAdiraImage(posts.imagePrompt, posts.imageStyle, posts.emotion) || undefined;
     }
 
     if (dryRun) {
@@ -219,7 +219,7 @@ export async function runCommentaryAgent(): Promise<void> {
       }
     }
 
-    post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle) || undefined;
+    post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion) || undefined;
 
     console.log('📱 Sending commentary draft to Telegram...');
     await sendCommentaryDraft(post);

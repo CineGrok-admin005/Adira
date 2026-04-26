@@ -48,6 +48,8 @@ export interface PublicJoiner {
   twitterHandle: string | null;   // @handle extracted from socials.twitter
 }
 
+export type EmotionState = 'excited' | 'thoughtful' | 'reporting' | 'serious' | 'warm';
+
 export interface GeneratedPosts {
   instagram: string;
   linkedin: string;
@@ -56,6 +58,7 @@ export interface GeneratedPosts {
   milestoneMessage: string;
   imagePrompt: string;
   imageStyle: 'Cinematic' | 'Moody' | 'Surreal';
+  emotion: EmotionState;
   audience: AudienceMode;
   imageBuffer?: Buffer;
 }
@@ -96,6 +99,7 @@ export interface CommentaryPost {
   };
   imagePrompt: string;
   imageStyle: 'Cinematic' | 'Moody' | 'Surreal';
+  emotion: EmotionState;
   audience: AudienceMode;
   imageBuffer?: Buffer;
 }

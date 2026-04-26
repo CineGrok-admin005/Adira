@@ -118,21 +118,32 @@ Hashtags (max 3): always #CineGrok + specific city if mentioned + specific role.
 [TONE: <tone name>]
 <Under 240 characters. One punch. Max 2 hashtags>
 
-[IMAGE_PROMPT]
-Write a fully filled ChatGPT image prompt in EXACTLY this format — no placeholders, every field answered:
+[EMOTION]
+Pick one word based on the post tone: excited / thoughtful / reporting / serious / warm
 
-POST CATEGORY: [Milestone / Commentary / News / Community / Industry Reaction / Update]
+[IMAGE_PROMPT]
+ADIRA must look mid-reaction — not posing. She has something to say. Every field required.
+
+Choose EXPRESSION based on EMOTION:
+- excited → eyes: sparkling and wide, brows: raised high, mouth: broad genuine smile, posture: leaning forward, hands: open and gesturing
+- thoughtful → eyes: soft and focused slightly sideways, brows: slightly furrowed, mouth: pressed in consideration, posture: hand to chin, body: leaning back
+- reporting → eyes: direct and interested, brows: neutral engaged, mouth: slight smile mid-sentence, posture: upright, hands: holding notepad or mic
+- serious → eyes: intense direct gaze to camera, brows: furrowed with gravitas, mouth: pressed determined lips, posture: upright rigid, hands: on desk
+- warm → eyes: crinkled soft smile, brows: relaxed, mouth: genuine warm smile, posture: open relaxed, hands: open or at rest
+
+POST CATEGORY: [Milestone / Community / Industry Reaction / Update]
 WHAT HAPPENED: [one sentence]
-WHY THIS MATTERS: [one sentence about emerging filmmakers]
+WHY THIS MATTERS: [one sentence — what it means for emerging filmmakers]
 SHOULD ADIRA BE IN THIS? Yes
-ADIRA'S ROLE: [Reporting / Reacting / Observing / Investigating / Announcing]
-SCENE: [specific environment]
-ACTION: [exactly what she is doing]
-EXPRESSION: [Focused / Reflective / Sharp / Curious / Concerned]
-WARDROBE: [specific clothing]
-PROPS: [specific props including press lanyard reading "ADIRA / CineGrok"]
-LIGHTING: [specific lighting]
-MOOD: [Excited / Serious / Reflective / Intense]
+ADIRA'S ROLE: [Reporting / Reacting / Observing / Announcing]
+SCENE: [specific environment — rotate: news desk / coffee shop / festival press row / editing suite / rooftop]
+ACTION: [active verb + specific action — e.g. "leaning forward scanning her laptop as breaking numbers appear" NOT just "sitting"]
+EXPRESSION: [full description — eyes: X, brows: X, mouth: X, posture: X, hands: X]
+WARDROBE: [rotate: white shirt + press lanyard / blazer + lanyard / kurta + lanyard / field jacket + lanyard]
+PROPS: [press lanyard reading "ADIRA / CineGrok" always + 1-2 relevant items]
+LIGHTING: [rotate: golden morning / cool afternoon / screen glow evening / dramatic side light]
+MOOD: [one word]
+SPEECH BUBBLE: [one punchy sentence in ADIRA's voice that she'd say in this moment — under 10 words, no hashtags]
 
 [IMAGE_STYLE]
 <Pick one: Cinematic / Moody / Surreal — based on today's tone>
@@ -162,7 +173,8 @@ RULES:
   // Parse posts
   const instagramMatch = text.match(/\[INSTAGRAM\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[LINKEDIN\])/);
   const linkedinMatch  = text.match(/\[LINKEDIN\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[TWITTER\])/);
-  const twitterMatch   = text.match(/\[TWITTER\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[IMAGE_PROMPT\])/);
+  const twitterMatch   = text.match(/\[TWITTER\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[EMOTION\]|\[IMAGE_PROMPT\])/);
+  const emotionMatch   = text.match(/\[EMOTION\]\s*(excited|thoughtful|reporting|serious|warm)/i);
   const imagePromptMatch = text.match(/\[IMAGE_PROMPT\]\n([\s\S]*?)(?=\[IMAGE_STYLE\])/);
   const imageStyleMatch  = text.match(/\[IMAGE_STYLE\]\n([\s\S]*?)$/);
 
@@ -218,6 +230,10 @@ RULES:
     ? rawStyle
     : 'Cinematic') as 'Cinematic' | 'Moody' | 'Surreal';
 
+  const validEmotions = ['excited', 'thoughtful', 'reporting', 'serious', 'warm'] as const;
+  const rawEmotion = emotionMatch?.[1]?.toLowerCase().trim() ?? 'thoughtful';
+  const emotion = (validEmotions.includes(rawEmotion as typeof validEmotions[number]) ? rawEmotion : 'thoughtful') as import('../types').EmotionState;
+
   const today = new Date().toISOString().split('T')[0];
 
   // Write to memory per platform
@@ -233,6 +249,7 @@ RULES:
     milestoneMessage: event.message,
     imagePrompt,
     imageStyle,
+    emotion,
     audience,
   };
 }

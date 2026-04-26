@@ -92,21 +92,32 @@ Hashtags (max 2): #CineGrok + either the source channel OR the specific show/fil
 [TONE]
 One word: e.g. Observational, Sharp, Warm, Poetic, Dry, Questioning
 
-[IMAGE_PROMPT]
-Write a fully filled ChatGPT image prompt in EXACTLY this format — no placeholders, every field answered:
+[EMOTION]
+Pick one: excited / thoughtful / reporting / serious / warm
 
-POST CATEGORY: [Milestone / Commentary / News / Community / Industry Reaction / Update]
+[IMAGE_PROMPT]
+ADIRA must look mid-reaction — not posing. She has something to say. Every field required.
+
+Choose EXPRESSION based on EMOTION:
+- excited → eyes: sparkling wide, brows: raised high, mouth: broad genuine smile, posture: leaning forward, hands: open gesturing
+- thoughtful → eyes: soft focused sideways, brows: slightly furrowed, mouth: pressed in consideration, posture: hand to chin
+- reporting → eyes: direct and interested, brows: engaged, mouth: slight smile mid-sentence, posture: upright, hands: notepad or mic
+- serious → eyes: intense gaze direct to camera, brows: furrowed gravitas, mouth: pressed determined, posture: rigid upright
+- warm → eyes: crinkled soft smile, brows: relaxed, mouth: genuine warm smile, posture: open relaxed
+
+POST CATEGORY: [Commentary / Industry Reaction / News]
 WHAT HAPPENED: [one sentence]
-WHY THIS MATTERS: [one sentence about emerging filmmakers]
+WHY THIS MATTERS: [what it means for emerging filmmakers]
 SHOULD ADIRA BE IN THIS? Yes
-ADIRA'S ROLE: [Reporting / Reacting / Observing / Investigating / Announcing]
-SCENE: [specific environment]
-ACTION: [exactly what she is doing]
-EXPRESSION: [Focused / Reflective / Sharp / Curious / Concerned]
-WARDROBE: [specific clothing]
-PROPS: [specific props including press lanyard reading "ADIRA / CineGrok"]
-LIGHTING: [specific lighting]
-MOOD: [Excited / Serious / Reflective / Intense]
+ADIRA'S ROLE: [Reporting / Reacting / Observing]
+SCENE: [specific — rotate: news desk / coffee shop / festival press row / editing suite / rooftop]
+ACTION: [active verb — e.g. "turning to face camera with notepad mid-sentence" NOT just "sitting"]
+EXPRESSION: [full description — eyes: X, brows: X, mouth: X, posture: X, hands: X]
+WARDROBE: [rotate: white shirt + lanyard / blazer + lanyard / kurta + lanyard / field jacket + lanyard]
+PROPS: [press lanyard "ADIRA / CineGrok" always + 1-2 relevant items]
+LIGHTING: [rotate: golden morning / cool afternoon / screen glow evening / dramatic side light]
+MOOD: [one word]
+SPEECH BUBBLE: [one punchy sentence ADIRA says in this moment — under 10 words, in her voice]
 
 [IMAGE_STYLE]
 One of: Cinematic / Moody / Surreal`;
@@ -131,7 +142,8 @@ One of: Cinematic / Moody / Surreal`;
   const instagramMatch  = text.match(/\[INSTAGRAM\]\s*([\s\S]*?)(?=\[LINKEDIN\])/);
   const linkedinMatch   = text.match(/\[LINKEDIN\]\s*([\s\S]*?)(?=\[TWITTER\])/);
   const twitterMatch    = text.match(/\[TWITTER\]\s*([\s\S]*?)(?=\[TONE\])/);
-  const toneMatch       = text.match(/\[TONE\]\s*([\s\S]*?)(?=\[IMAGE_PROMPT\])/);
+  const toneMatch        = text.match(/\[TONE\]\s*([\s\S]*?)(?=\[EMOTION\]|\[IMAGE_PROMPT\])/);
+  const emotionMatch     = text.match(/\[EMOTION\]\s*(excited|thoughtful|reporting|serious|warm)/i);
   const imagePromptMatch = text.match(/\[IMAGE_PROMPT\]\s*([\s\S]*?)(?=\[IMAGE_STYLE\])/);
   const imageStyleMatch  = text.match(/\[IMAGE_STYLE\]\s*(Cinematic|Moody|Surreal)/);
 
@@ -150,6 +162,9 @@ One of: Cinematic / Moody / Surreal`;
   const selectedIndex = parseInt(indexMatch?.[1] ?? '1', 10) - 1;
   const sourceStory = stories[selectedIndex] ?? stories[0];
   const tone = toneMatch?.[1]?.trim() ?? 'Observational';
+  const validEmotions = ['excited', 'thoughtful', 'reporting', 'serious', 'warm'] as const;
+  const rawEmotion = emotionMatch?.[1]?.toLowerCase().trim() ?? 'thoughtful';
+  const emotion = (validEmotions.includes(rawEmotion as typeof validEmotions[number]) ? rawEmotion : 'thoughtful') as import('../types').EmotionState;
 
   const today = new Date().toISOString().split('T')[0];
   const openingLine = instagram.split('\n')[0].slice(0, 80);
@@ -172,6 +187,7 @@ One of: Cinematic / Moody / Surreal`;
     },
     imagePrompt: imagePromptMatch?.[1]?.trim() ?? 'A filmmaker looking at a screen in a dark edit suite, warm single light source',
     imageStyle: (imageStyleMatch?.[1] as 'Cinematic' | 'Moody' | 'Surreal') ?? 'Cinematic',
+    emotion,
     audience,
   };
 }

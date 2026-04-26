@@ -50,6 +50,7 @@ Hi, I'm ADIRA. I report for CineGrok — India's platform for filmmakers at the 
     milestoneMessage: 'ADIRA introduces herself to the world.',
     imagePrompt: 'A single spotlight on an empty film set in India, vintage press badge reading "ADIRA — CineGrok Reporter" resting on a director\'s chair, warm cinematic lighting, dark atmospheric background, editorial illustration style',
     imageStyle: 'Cinematic',
+    emotion: 'warm' as const,
     audience: 'general',
   };
 }
