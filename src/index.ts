@@ -3,7 +3,6 @@ dotenv.config();
 
 import { fetchGrowthData, fetchDemoFilterDiagnostic } from './supabase/queries';
 import { sanitizeForPublic } from './privacy/sanitize';
-import { detectMilestone } from './milestones/detector';
 import type { MilestoneEvent } from './types';
 import { generatePosts } from './claude/generatePosts';
 import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft } from './telegram/sendDraft';
@@ -177,15 +176,29 @@ export async function runCommentaryAgent(): Promise<void> {
     let backlogId: string | null = null;
 
     if (stories.length > 0) {
-      console.log('✍️  ADIRA is writing commentary...');
-      post = await generateCommentary(stories);
-      
-      if (post && post.sourceStory.originalIndex !== undefined) {
-        // Push unused top stories to backlog (TTL: 2 days)
-        const usedIdx = post.sourceStory.originalIndex;
-        for (let i = 0; i < Math.min(stories.length, 5); i++) {
-          if (i !== usedIdx) {
-            await pushToBacklog('COMMENTARY', 5 - i, stories[i], 2);
+      // Filter out stories already posted in the last 24 hours
+      const { data: recentlyPosted } = await (await import('./supabase/client')).serviceClient
+        .from('content_backlog')
+        .select('data')
+        .eq('type', 'COMMENTARY')
+        .eq('status', 'posted')
+        .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+      const usedUrls = new Set((recentlyPosted || []).map((r: { data: { youtubeVideo?: { url?: string } } }) => r.data?.youtubeVideo?.url).filter(Boolean));
+      const freshStories = stories.filter(s => !usedUrls.has(s.youtubeVideo.url));
+
+      if (freshStories.length === 0) {
+        console.log('💤 All organic stories already posted today. Checking backlog...');
+      } else {
+        console.log('✍️  ADIRA is writing commentary...');
+        post = await generateCommentary(freshStories);
+
+        if (post && post.sourceStory.originalIndex !== undefined) {
+          const usedIdx = post.sourceStory.originalIndex;
+          for (let i = 0; i < Math.min(freshStories.length, 5); i++) {
+            if (i !== usedIdx) {
+              await pushToBacklog('COMMENTARY', 5 - i, freshStories[i], 2);
+            }
           }
         }
       }
@@ -217,10 +230,24 @@ export async function runCommentaryAgent(): Promise<void> {
       catch (err) { console.error('❌ Twitter:', err instanceof Error ? err.message : err); }
       try { await postToLinkedIn(post.linkedin, post.imageBuffer); }
       catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
-      
-      if (backlogId) {
-        await markBacklogItemPosted(backlogId);
-      }
+    }
+
+    // Mark story as posted — prevents same story appearing at next scheduled run
+    if (backlogId) {
+      await markBacklogItemPosted(backlogId);
+    } else {
+      // Organic story — push as 'posted' so it's tracked for deduplication
+      await pushToBacklog('COMMENTARY', 0, { youtubeVideo: { url: post.sourceStory.url } }, 1);
+      // Immediately mark it posted
+      const { data: inserted } = await (await import('./supabase/client')).serviceClient
+        .from('content_backlog')
+        .select('id')
+        .eq('type', 'COMMENTARY')
+        .eq('status', 'queued')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      if (inserted?.id) await markBacklogItemPosted(inserted.id);
     }
 
     console.log('✅ Type 2 commentary completed!');
