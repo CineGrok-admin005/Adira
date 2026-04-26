@@ -1,26 +1,8 @@
-import { readFileSync } from 'fs';
 import axios from 'axios';
-import path from 'path';
-import FormData from 'form-data';
 
-const ADIRA_IMAGE_PATH = path.resolve(process.cwd(), 'assets', 'adira-avatar.png');
+// Avatar is public on GitHub — pass raw URL directly, no upload needed
+const ADIRA_AVATAR_URL = 'https://raw.githubusercontent.com/CineGrok-admin005/Adira/main/assets/adira-avatar.png';
 const SPACE_URL = 'https://yanze-pulid-flux.hf.space';
-
-async function uploadFaceImage(token: string): Promise<string | null> {
-  try {
-    const form = new FormData();
-    form.append('files', readFileSync(ADIRA_IMAGE_PATH), { filename: 'adira-avatar.png', contentType: 'image/png' });
-
-    const res = await axios.post(`${SPACE_URL}/upload`, form, {
-      headers: { ...form.getHeaders(), Authorization: `Bearer ${token}` },
-      timeout: 30000,
-    });
-    return res.data?.[0] ?? null;
-  } catch (err) {
-    console.error('❌ Face upload failed:', (err as Error).message);
-    return null;
-  }
-}
 
 export async function generateAdiraImage(prompt: string, style: string): Promise<Buffer | null> {
   const token = process.env.HUGGINGFACE_API_KEY;
@@ -37,31 +19,24 @@ export async function generateAdiraImage(prompt: string, style: string): Promise
     const fullPrompt = `ADIRA, Indian woman reporter, ${prompt}, ${styleMap[style] ?? styleMap.Cinematic}, press lanyard, high detail illustration`;
     const negativePrompt = '(photorealistic:1.5), photograph, 3D render, realistic skin texture, realistic lighting, RAW photo, DSLR, (lowres, low quality, worst quality:1.2), text, watermark, deformed, ugly, blurry';
 
-    // Step 1: Upload face reference image
-    const facePath = await uploadFaceImage(token);
-    if (!facePath) {
-      console.warn('⚠️  Could not upload face image — skipping image generation');
-      return null;
-    }
-
-    // Step 2: Submit generation job
+    // Submit generation job — pass avatar as public URL, no upload step needed
     const submitRes = await axios.post(
       `${SPACE_URL}/call/generate_image`,
       {
         data: [
-          fullPrompt,       // prompt
-          { path: facePath }, // id_image (uploaded file reference)
-          1,                // timestep_to_start_id
-          4,                // guidance
-          '-1',             // seed
-          1,                // true_cfg_scale
-          1024,             // width
-          1024,             // height
-          28,               // num_steps
-          1,                // id_weight
-          negativePrompt,   // negative_prompt
-          1,                // timestep_to_start_cfg
-          128,              // max_sequence_length
+          fullPrompt,
+          { url: ADIRA_AVATAR_URL },  // id_image via public GitHub URL
+          1,                           // timestep_to_start_id (0-1 for illustrated)
+          4,                           // guidance
+          '-1',                        // seed
+          1,                           // true_cfg_scale
+          1024,                        // width
+          1024,                        // height
+          28,                          // num_steps
+          1,                           // id_weight
+          negativePrompt,
+          1,                           // timestep_to_start_cfg
+          128,                         // max_sequence_length
         ],
       },
       {
@@ -72,19 +47,18 @@ export async function generateAdiraImage(prompt: string, style: string): Promise
 
     const eventId = submitRes.data?.event_id;
     if (!eventId) {
-      console.warn('⚠️  No event_id returned from PuLID-FLUX');
+      console.warn('⚠️  No event_id from PuLID-FLUX');
       return null;
     }
 
-    // Step 3: Poll for result (SSE — read until 'complete' event)
-    console.log(`   Polling for result (event: ${eventId})...`);
+    console.log(`   Polling result (event: ${eventId})...`);
     const resultRes = await axios.get(`${SPACE_URL}/call/generate_image/${eventId}`, {
       headers: { Authorization: `Bearer ${token}` },
       responseType: 'text',
       timeout: 120000,
     });
 
-    // Parse SSE: find last 'data:' line with JSON
+    // Parse SSE stream — find last data line with an image URL
     const lines = (resultRes.data as string).split('\n');
     let imageUrl: string | null = null;
     for (const line of lines) {
@@ -98,7 +72,7 @@ export async function generateAdiraImage(prompt: string, style: string): Promise
     }
 
     if (!imageUrl) {
-      console.warn('⚠️  PuLID-FLUX returned no image URL in result');
+      console.warn('⚠️  PuLID-FLUX returned no image URL');
       return null;
     }
 
