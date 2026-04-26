@@ -4,6 +4,7 @@ dotenv.config();
 import { fetchGrowthData, fetchDemoFilterDiagnostic } from './supabase/queries';
 import { sanitizeForPublic } from './privacy/sanitize';
 import { detectMilestone } from './milestones/detector';
+import type { MilestoneEvent } from './types';
 import { generatePosts } from './claude/generatePosts';
 import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft } from './telegram/sendDraft';
 import { getIntroductionPosts } from './aria/introduce';
@@ -62,7 +63,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     const { pushToBacklog, getNextFromBacklog, supersedeMilestones, markBacklogItemPosted } = await import('./supabase/queue');
 
     const allMilestones = detectAllMilestones(safeData);
-    let milestone = allMilestones.length > 0 ? allMilestones[0] : { hasMilestone: false, type: 'NONE', message: '', data: safeData as any };
+    let milestone: MilestoneEvent = allMilestones.length > 0 ? allMilestones[0] : { hasMilestone: false, type: 'NONE' as const, message: '', data: safeData };
     let backlogId: string | null = null;
 
     if (!milestone.hasMilestone) {
@@ -70,7 +71,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
       const backlogItem = await getNextFromBacklog('MILESTONE');
       if (backlogItem) {
         console.log(`📦 Found queued milestone: [${backlogItem.data.type}] ${backlogItem.data.message}`);
-        milestone = backlogItem.data;
+        milestone = backlogItem.data as MilestoneEvent;
         backlogId = backlogItem.id;
       } else {
         console.log('💤 Backlog is empty. Agent going back to sleep.');

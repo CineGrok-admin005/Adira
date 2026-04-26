@@ -16,11 +16,11 @@ export async function generateAdiraImage(prompt: string, style: string): Promise
     const faceBlob = new Blob([faceBuffer], { type: 'image/png' });
 
     const styleMap: Record<string, string> = {
-      Cinematic: 'editorial illustration, graphic novel style, cinematic lighting, Indian cinema aesthetic',
-      Moody:     'editorial illustration, graphic novel style, moody dramatic lighting, deep shadows',
-      Surreal:   'editorial illustration, graphic novel style, surreal dreamlike atmosphere',
+      Cinematic: '2D animated illustration, graphic novel art style, flat cel-shading, bold outlines, Indian cinema poster aesthetic, NOT photorealistic',
+      Moody:     '2D animated illustration, graphic novel art style, moody dramatic shadows, cel-shaded, bold outlines, NOT photorealistic',
+      Surreal:   '2D animated illustration, surreal dreamlike graphic novel style, cel-shaded, bold outlines, NOT photorealistic',
     };
-    const fullPrompt = `ADIRA, Indian woman reporter, ${prompt}, ${styleMap[style] ?? styleMap.Cinematic}, press lanyard, high quality, detailed`;
+    const fullPrompt = `ADIRA, Indian woman reporter, ${prompt}, ${styleMap[style] ?? styleMap.Cinematic}, press lanyard, high detail illustration`;
 
     // Endpoint: /generate_image
     // Params: prompt, id_image, timestep_to_start_id, guidance, seed(str),
@@ -37,7 +37,7 @@ export async function generateAdiraImage(prompt: string, style: string): Promise
       1024,         // height
       28,           // num_steps
       1,            // id_weight
-      '(lowres, low quality, worst quality:1.2), text, watermark, deformed, ugly, blurry',
+      '(photorealistic:1.5), photograph, 3D render, realistic skin texture, realistic lighting, RAW photo, DSLR, (lowres, low quality, worst quality:1.2), text, watermark, deformed, ugly, blurry',
       1,            // timestep_to_start_cfg
       128,          // max_sequence_length
     ]) as Promise<unknown>).catch((err: Error) => {
