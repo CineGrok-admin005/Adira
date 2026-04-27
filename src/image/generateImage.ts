@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { readFileSync } from 'fs';
 import path from 'path';
+import sharp from 'sharp';
 import type { EmotionState } from '../types';
 
 const AVATAR_PATH = path.resolve(process.cwd(), 'assets', 'adira-avatar.png');
@@ -27,7 +28,44 @@ function buildPuLIDPrompt(scene: string, style: string, emotion: EmotionState): 
   };
 }
 
-export async function generateAdiraImage(prompt: string, style: string, emotion: EmotionState = 'thoughtful'): Promise<Buffer | null> {
+async function addSpeechBubble(imageBuffer: Buffer, text: string): Promise<Buffer> {
+  const meta = await sharp(imageBuffer).metadata();
+  const w = meta.width ?? 1024;
+  const h = meta.height ?? 1024;
+
+  // Cap text length for display
+  const display = text.length > 80 ? text.slice(0, 77) + '...' : text;
+  const fontSize = Math.max(22, Math.round(w / 36));
+  const barH     = Math.round(fontSize * 3.2);
+  const padding  = Math.round(fontSize * 0.9);
+
+  // SVG: dark gradient bar at bottom with white text
+  const svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#000000" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#000000" stop-opacity="0.82"/>
+      </linearGradient>
+    </defs>
+    <rect x="0" y="${h - barH}" width="${w}" height="${barH}" fill="url(#bar)"/>
+    <text
+      x="${padding}"
+      y="${h - Math.round(barH * 0.28)}"
+      font-family="Georgia, serif"
+      font-size="${fontSize}"
+      font-style="italic"
+      fill="white"
+      opacity="0.95"
+    >${display.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</text>
+  </svg>`;
+
+  return sharp(imageBuffer)
+    .composite([{ input: Buffer.from(svg), blend: 'over' }])
+    .png()
+    .toBuffer();
+}
+
+export async function generateAdiraImage(prompt: string, style: string, emotion: EmotionState = 'thoughtful', speechBubble?: string): Promise<Buffer | null> {
   const token = process.env.HUGGINGFACE_API_KEY;
   if (!token) return null;
 
@@ -59,9 +97,9 @@ export async function generateAdiraImage(prompt: string, style: string, emotion:
     });
 
     // Gradio 5.x SSE: look for "event: complete" then "data: [...]"
-    const raw = resultRes.data as string;
+    const sseText = resultRes.data as string;
     let imageUrl: string | null = null;
-    const lines = raw.split('\n');
+    const lines = sseText.split('\n');
     let nextIsComplete = false;
 
     for (const line of lines) {
@@ -84,7 +122,8 @@ export async function generateAdiraImage(prompt: string, style: string, emotion:
       responseType: 'arraybuffer',
       timeout: 30000,
     });
-    return Buffer.from(imgRes.data);
+    const imageRaw = Buffer.from(imgRes.data as ArrayBuffer);
+    return speechBubble ? addSpeechBubble(imageRaw, speechBubble) : imageRaw;
 
   } catch (error) {
     console.error('❌ PuLID-FLUX image generation failed:', (error as Error).message);

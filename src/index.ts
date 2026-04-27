@@ -92,7 +92,8 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     console.log(`   Audience: ${posts.audience} | Image style: ${posts.imageStyle}`);
 
     if (!dryRun) {
-      posts.imageBuffer = await generateAdiraImage(posts.imagePrompt, posts.imageStyle, posts.emotion) || undefined;
+      const speechBubble = posts.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+      posts.imageBuffer = await generateAdiraImage(posts.imagePrompt, posts.imageStyle, posts.emotion, speechBubble) || undefined;
     }
 
     if (dryRun) {
@@ -219,7 +220,8 @@ export async function runCommentaryAgent(): Promise<void> {
       }
     }
 
-    post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion) || undefined;
+    const speechBubble = post.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+    post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion, speechBubble) || undefined;
 
     console.log('📱 Sending commentary draft to Telegram...');
     await sendCommentaryDraft(post);
