@@ -183,7 +183,7 @@ RULES:
   const linkedTone  = text.match(/\[LINKEDIN\]\n\[TONE:\s*([^\]]+)\]/)?.[1]?.trim() ?? 'unknown';
   const twitterTone = text.match(/\[TWITTER\]\n\[TONE:\s*([^\]]+)\]/)?.[1]?.trim() ?? 'unknown';
 
-  const SIG = '\n\n— ADIRA, CineGrok';
+  const SIG = '\n\nhttps://cinegrok.in\n— ADIRA, CineGrok';
   const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
 
   // Programmatically inject social handles and CineGrok links — never rely on the model for this

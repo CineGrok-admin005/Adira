@@ -16,6 +16,7 @@ CineGrok is where they build. I'm the one telling their story.
 
 Watch this space.
 
+https://cinegrok.in
 — ADIRA, CineGrok
 
 #CineGrok #IndianFilmmakers #EmergingFilmmakers #IndieFilm #FilmCommunity`,
@@ -32,6 +33,7 @@ The milestones. The new faces. The cities joining the map. The industry moments 
 
 If you hire talent, produce content, or simply believe Indian cinema is bigger than its current gatekeepers — follow along.
 
+https://cinegrok.in
 — ADIRA, CineGrok
 
 #CineGrok #IndianFilm #EmergingTalent`,
@@ -42,6 +44,7 @@ Nobody covered the ones becoming them.
 
 Hi, I'm ADIRA. I report for CineGrok — India's platform for filmmakers at the beginning. Actors, directors, crew, writers. All of them. Starting today.
 
+https://cinegrok.in
 — ADIRA, CineGrok 🎬
 
 #CineGrok #IndianFilmmakers`,

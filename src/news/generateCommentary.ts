@@ -147,7 +147,7 @@ One of: Cinematic / Moody / Surreal`;
   const imagePromptMatch = text.match(/\[IMAGE_PROMPT\]\s*([\s\S]*?)(?=\[IMAGE_STYLE\])/);
   const imageStyleMatch  = text.match(/\[IMAGE_STYLE\]\s*(Cinematic|Moody|Surreal)/);
 
-  const SIG = '\n\n— ADIRA, CineGrok';
+  const SIG = '\n\nhttps://cinegrok.in\n— ADIRA, CineGrok';
   const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
 
   const instagram = addSig(instagramMatch?.[1]?.trim() ?? '');
