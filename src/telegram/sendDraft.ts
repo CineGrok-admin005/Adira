@@ -41,7 +41,9 @@ export async function sendDraftToFounder(posts: GeneratedPosts): Promise<void> {
   await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(posts.linkedin)}`, html);
   await bot.sendMessage(chatId, `🐦 <b>TWITTER / X</b>\n\n${h(posts.twitter)}`, html);
   if (posts.imageBuffer) {
-    await bot.sendPhoto(chatId, posts.imageBuffer, { caption: `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\n${h(posts.imagePrompt)}`, parse_mode: 'HTML' });
+    // Telegram photo caption limit is 1024 chars — send image first, prompt as follow-up
+    await bot.sendPhoto(chatId, posts.imageBuffer, { caption: `🎨 ADIRA image — ${posts.imageStyle} | ${posts.emotion ?? 'thoughtful'}`, parse_mode: 'HTML' });
+    await bot.sendMessage(chatId, `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(posts.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`, html);
   } else {
     await bot.sendMessage(chatId, `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(posts.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`, html);
   }
