@@ -65,68 +65,75 @@ async function addSpeechBubble(imageBuffer: Buffer, text: string): Promise<Buffe
     .toBuffer();
 }
 
+async function attemptGeneration(token: string, positive: string, negative: string): Promise<Buffer | null> {
+  const avatarB64 = readFileSync(AVATAR_PATH).toString('base64');
+  const imageData = { url: `data:image/png;base64,${avatarB64}`, orig_name: 'adira-avatar.png', mime_type: 'image/png', is_stream: false, meta: {} };
+
+  const submitRes = await axios.post(
+    `${SPACE_URL}/call/generate_image`,
+    { data: [positive, imageData, 1, 4, '-1', 1, 1024, 1024, 28, 1, negative, 1, 128] },
+    { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 30000 }
+  );
+
+  const eventId = submitRes.data?.event_id;
+  if (!eventId) return null;
+
+  const resultRes = await axios.get(`${SPACE_URL}/call/generate_image/${eventId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    responseType: 'text',
+    timeout: 120000,
+  });
+
+  const lines = (resultRes.data as string).split('\n');
+  let imageUrl: string | null = null;
+  let nextIsComplete = false;
+  for (const line of lines) {
+    if (line.trim() === 'event: complete') { nextIsComplete = true; continue; }
+    if (nextIsComplete && line.startsWith('data:')) {
+      try {
+        const parsed = JSON.parse(line.slice(5).trim());
+        const url = parsed?.[0]?.url;
+        if (url) { imageUrl = url; break; }
+      } catch { /* skip */ }
+      nextIsComplete = false;
+    }
+  }
+
+  if (!imageUrl) return null;
+
+  const imgRes = await axios.get(imageUrl, {
+    headers: { Authorization: `Bearer ${token}` },
+    responseType: 'arraybuffer',
+    timeout: 30000,
+  });
+  return Buffer.from(imgRes.data as ArrayBuffer);
+}
+
 export async function generateAdiraImage(prompt: string, style: string, emotion: EmotionState = 'thoughtful', speechBubble?: string): Promise<Buffer | null> {
   const token = process.env.HUGGINGFACE_API_KEY;
   if (!token) return null;
 
-  try {
-    console.log(`🖼️  Generating ADIRA image — emotion: ${emotion}...`);
+  const { positive, negative } = buildPuLIDPrompt(prompt, style, emotion);
+  const MAX_ATTEMPTS = 3;
 
-    // Read avatar as base64 — HF spaces can't reach external URLs
-    const b64       = readFileSync(AVATAR_PATH).toString('base64');
-    const avatarUrl = `data:image/png;base64,${b64}`;
-
-    const { positive, negative } = buildPuLIDPrompt(prompt, style, emotion);
-
-    const imageData = { url: avatarUrl, orig_name: 'adira-avatar.png', mime_type: 'image/png', is_stream: false, meta: {} };
-
-    const submitRes = await axios.post(
-      `${SPACE_URL}/call/generate_image`,
-      { data: [positive, imageData, 1, 4, '-1', 1, 1024, 1024, 28, 1, negative, 1, 128] },
-      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 30000 }
-    );
-
-    const eventId = submitRes.data?.event_id;
-    if (!eventId) { console.warn('⚠️  No event_id from PuLID-FLUX'); return null; }
-
-    console.log(`   Polling result (event: ${eventId})...`);
-    const resultRes = await axios.get(`${SPACE_URL}/call/generate_image/${eventId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: 'text',
-      timeout: 120000,
-    });
-
-    // Gradio 5.x SSE: look for "event: complete" then "data: [...]"
-    const sseText = resultRes.data as string;
-    let imageUrl: string | null = null;
-    const lines = sseText.split('\n');
-    let nextIsComplete = false;
-
-    for (const line of lines) {
-      if (line.trim() === 'event: complete') { nextIsComplete = true; continue; }
-      if (nextIsComplete && line.startsWith('data:')) {
-        try {
-          const parsed = JSON.parse(line.slice(5).trim());
-          const url = parsed?.[0]?.url;
-          if (url) { imageUrl = url; break; }
-        } catch { /* skip */ }
-        nextIsComplete = false;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      console.log(`🖼️  Generating ADIRA image — emotion: ${emotion} (attempt ${attempt}/${MAX_ATTEMPTS})...`);
+      const imageRaw = await attemptGeneration(token, positive, negative);
+      if (imageRaw) {
+        console.log('✅ Image generated.');
+        return speechBubble ? addSpeechBubble(imageRaw, speechBubble) : imageRaw;
       }
+      console.warn(`⚠️  Attempt ${attempt} returned no image.`);
+    } catch (err) {
+      console.warn(`⚠️  Attempt ${attempt} failed:`, (err as Error).message);
     }
-
-    if (!imageUrl) { console.warn('⚠️  PuLID-FLUX returned no image URL'); return null; }
-
-    console.log('✅ Image generated. Downloading...');
-    const imgRes = await axios.get(imageUrl, {
-      headers: { Authorization: `Bearer ${token}` },
-      responseType: 'arraybuffer',
-      timeout: 30000,
-    });
-    const imageRaw = Buffer.from(imgRes.data as ArrayBuffer);
-    return speechBubble ? addSpeechBubble(imageRaw, speechBubble) : imageRaw;
-
-  } catch (error) {
-    console.error('❌ PuLID-FLUX image generation failed:', (error as Error).message);
-    return null;
+    if (attempt < MAX_ATTEMPTS) {
+      console.log(`   Retrying in 8 seconds...`);
+      await new Promise(r => setTimeout(r, 8000));
+    }
   }
+
+  console.error('❌ PuLID-FLUX image generation failed after 3 attempts.');
+  return null;
 }

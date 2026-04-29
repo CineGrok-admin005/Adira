@@ -243,7 +243,7 @@ export async function fetchGrowthData(): Promise<GrowthData> {
   }
 
   // --- Step 6: Milestone check ---
-  const MILESTONE_NUMBERS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
+  const MILESTONE_NUMBERS = [10, 25, 50, 100, 250, 500, 1000, 2500, 5000];
   const total = totalRealUsers || 0;
   const joinedToday = newToday || 0;
   const isTestMilestone = process.argv.includes('--test-milestone');
