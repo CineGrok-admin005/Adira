@@ -116,7 +116,10 @@ Hashtags (max 3): always #CineGrok + specific city if mentioned + specific role.
 
 [TWITTER]
 [TONE: <tone name>]
-<Under 240 characters. One punch. Max 2 hashtags>
+<Under 240 characters. One punch. Exactly 2 hashtags chosen for maximum reach:
+- First hashtag: a high-volume searched term — a real filmmaker name (#SSRajamouli #ARRahman), a film title (#RRR #Dhurandhar #KGF), a city (#Mumbai #Bengaluru #Kochi), or a role (#IndieDirector #Cinematographer #Screenwriter)
+- Second hashtag: always #CineGrok
+Pick the first hashtag based on what people are ACTUALLY searching on Twitter right now related to this post. If a specific person or film is mentioned, tag that. If it's about a city, tag the city. Never use vague tags like #Film or #Cinema.>
 
 [EMOTION]
 Pick one word based on the post tone: excited / thoughtful / reporting / serious / warm

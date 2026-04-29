@@ -86,8 +86,10 @@ Hashtags (max 3): always #CineGrok + the specific show or person discussed + 1 h
 Hashtags (2-3): #CineGrok + source channel + specific show or film name.
 
 [TWITTER]
-Under 240 characters. One punch. Something worth quoting.
-Hashtags (max 2): #CineGrok + either the source channel OR the specific show/film name — whichever is more searchable.
+Under 240 characters. One punch. Something worth quoting. Exactly 2 hashtags:
+- First hashtag: the single most searched term related to this story — a specific person (#ARRahman #SaiAbhyankkar), film title (#NukkadNaatak #Dhurandhar), production house (#HombaleFilms #NetflixIndia), or festival (#MAMI #IFFI). Ask yourself: what would someone be searching on Twitter to find this story? Use that.
+- Second hashtag: always #CineGrok
+Never use broad tags like #Bollywood or #Film alone — they're too crowded to get reach. Specific always beats generic.
 
 [TONE]
 One word: e.g. Observational, Sharp, Warm, Poetic, Dry, Questioning
