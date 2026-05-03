@@ -190,7 +190,7 @@ export async function runCommentaryAgent(): Promise<void> {
         .select('data')
         .eq('type', 'COMMENTARY')
         .eq('status', 'posted')
-        .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
       // Deduplicate by URL AND by topic (proper noun overlap) — prevents same film reviewed by different channels
       const usedUrls   = new Set((recentlyPosted || []).map((r: { data: { youtubeVideo?: { url?: string } } }) => r.data?.youtubeVideo?.url).filter(Boolean));
