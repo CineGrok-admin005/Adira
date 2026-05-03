@@ -66,7 +66,9 @@ async function addSpeechBubble(imageBuffer: Buffer, text: string): Promise<Buffe
 }
 
 async function attemptGeneration(token: string, positive: string, negative: string): Promise<Buffer | null> {
-  const avatarB64 = readFileSync(AVATAR_PATH).toString('base64');
+  // Resize avatar to 512px before base64 — original is 6MB which times out on Railway
+  const resized  = await sharp(readFileSync(AVATAR_PATH)).resize(512, 512, { fit: 'cover' }).png({ compressionLevel: 9 }).toBuffer();
+  const avatarB64 = resized.toString('base64');
   const imageData = { url: `data:image/png;base64,${avatarB64}`, orig_name: 'adira-avatar.png', mime_type: 'image/png', is_stream: false, meta: {} };
 
   const submitRes = await axios.post(

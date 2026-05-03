@@ -259,8 +259,10 @@ export async function fetchGrowthData(): Promise<GrowthData> {
     };
 
   const analytics = allDailyAnalytics || [];
+  const todayStr   = now.toISOString().split('T')[0];
   const totalProfileViews  = analytics.reduce((s, r) => s + (r.views  || 0), 0);
   const totalProfileClicks = analytics.reduce((s, r) => s + (r.clicks || 0), 0);
+  const todayProfileViews  = analytics.filter(r => r.date === todayStr).reduce((s, r) => s + (r.views || 0), 0);
   const weeklyProfileViews = analytics
     .filter(r => r.date >= oneWeekAgo.split('T')[0])
     .reduce((s, r) => s + (r.views || 0), 0);
@@ -354,6 +356,7 @@ export async function fetchGrowthData(): Promise<GrowthData> {
     firstFromNewCity,
     milestoneHit,
     totalProfileViews,
+    todayProfileViews,
     weeklyProfileViews,
     totalProfileClicks,
     weeklyInstagramReferrals,

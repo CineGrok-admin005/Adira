@@ -14,6 +14,7 @@ export interface GrowthData {
 
   // Profile engagement (from profile_analytics_daily)
   totalProfileViews: number;
+  todayProfileViews: number;        // views today only — used for milestone detection
   weeklyProfileViews: number;
   totalProfileClicks: number;
   weeklyInstagramReferrals: number; // people finding CineGrok filmmakers via Instagram

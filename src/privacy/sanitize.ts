@@ -48,6 +48,7 @@ export function sanitizeForPublic(data: GrowthData): GrowthData {
 
     // Engagement — all aggregated, no individual PII
     totalProfileViews: data.totalProfileViews,
+    todayProfileViews: data.todayProfileViews,
     weeklyProfileViews: data.weeklyProfileViews,
     totalProfileClicks: data.totalProfileClicks,
     weeklyInstagramReferrals: data.weeklyInstagramReferrals,

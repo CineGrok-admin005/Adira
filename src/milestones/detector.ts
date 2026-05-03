@@ -43,8 +43,8 @@ export function detectAllMilestones(data: GrowthData): MilestoneEvent[] {
     });
   }
 
-  // Priority 4: Profile view milestone crossed today
-  const viewMilestone = crossedToday(VIEW_MILESTONES, data.totalProfileViews, data.weeklyProfileViews);
+  // Priority 4: Profile view milestone crossed today — use TODAY's views only
+  const viewMilestone = crossedToday(VIEW_MILESTONES, data.totalProfileViews, data.todayProfileViews);
   if (viewMilestone) {
     milestones.push({
       hasMilestone: true,
