@@ -12,6 +12,7 @@ import { fetchGoogleNews } from './news/fetchGoogleNews';
 import { crossVerify } from './news/crossVerify';
 import { generateCommentary } from './news/generateCommentary';
 import { generateAdiraImage } from './image/generateImage';
+import { saveImageCache, loadImageCache, clearImageCache, bufferToBase64, base64ToBuffer } from './image/imageCache';
 import { startScheduler } from './scheduler';
 import { postToTwitter } from './social/twitter';
 import { postToLinkedIn, checkLinkedInTokenExpiry } from './social/linkedin';
@@ -92,8 +93,14 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     console.log(`   Audience: ${posts.audience} | Image style: ${posts.imageStyle}`);
 
     if (!dryRun) {
-      const speechBubble = posts.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
-      posts.imageBuffer = await generateAdiraImage(posts.imagePrompt, posts.imageStyle, posts.emotion, speechBubble) || undefined;
+      const cached = loadImageCache('type1');
+      if (cached) {
+        posts.imageBuffer = base64ToBuffer(cached.imageBase64);
+        clearImageCache('type1');
+      } else {
+        const speechBubble = posts.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+        posts.imageBuffer = await generateAdiraImage(posts.imagePrompt, posts.imageStyle, posts.emotion, speechBubble) || undefined;
+      }
     }
 
     if (dryRun) {
@@ -234,8 +241,14 @@ export async function runCommentaryAgent(): Promise<void> {
       }
     }
 
-    const speechBubble = post.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
-    post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion, speechBubble) || undefined;
+    const cachedCommentary = loadImageCache('type2');
+    if (cachedCommentary) {
+      post.imageBuffer = base64ToBuffer(cachedCommentary.imageBase64);
+      clearImageCache('type2');
+    } else {
+      const speechBubble = post.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+      post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion, speechBubble) || undefined;
+    }
 
     console.log('📱 Sending commentary draft to Telegram...');
     await sendCommentaryDraft(post);
@@ -270,6 +283,43 @@ export async function runCommentaryAgent(): Promise<void> {
   } catch (error) {
     console.error('❌ Commentary Agent error:', error);
   }
+}
+
+// Pre-warm Type 1: generate text + image 30 min before 8 AM, cache to disk
+export async function preWarmType1(): Promise<void> {
+  try {
+    console.log('⏰ Pre-warming Type 1 image...');
+    const rawData  = await fetchGrowthData();
+    const safeData = sanitizeForPublic(rawData);
+    const { detectAllMilestones } = await import('./milestones/detector');
+    const all = detectAllMilestones(safeData);
+    if (all.length === 0) { console.log('💤 No milestone to pre-warm for.'); return; }
+    const posts = await generatePosts(all[0] as MilestoneEvent);
+    const speechBubble = posts.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+    const buf = await generateAdiraImage(posts.imagePrompt, posts.imageStyle, posts.emotion, speechBubble);
+    if (buf) {
+      saveImageCache('type1', { generatedAt: new Date().toISOString(), imageBase64: bufferToBase64(buf), prompt: posts.imagePrompt, style: posts.imageStyle, emotion: posts.emotion, speechBubble });
+      console.log('✅ Type 1 image pre-warmed and cached.');
+    }
+  } catch (err) { console.error('❌ Pre-warm Type 1 failed:', (err as Error).message); }
+}
+
+// Pre-warm Type 2: fetch news, pick story, generate image 30 min before commentary slot
+export async function preWarmType2(): Promise<void> {
+  try {
+    console.log('⏰ Pre-warming Type 2 image...');
+    const [videos, news] = await Promise.all([fetchYouTubeVideos(), fetchGoogleNews()]);
+    const stories = crossVerify(videos, news);
+    if (stories.length === 0) { console.log('💤 No stories to pre-warm for.'); return; }
+    const post = await generateCommentary(stories);
+    if (!post) { console.log('💤 No commentary generated for pre-warm.'); return; }
+    const speechBubble = post.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+    const buf = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion, speechBubble);
+    if (buf) {
+      saveImageCache('type2', { generatedAt: new Date().toISOString(), imageBase64: bufferToBase64(buf), prompt: post.imagePrompt, style: post.imageStyle, emotion: post.emotion, speechBubble });
+      console.log('✅ Type 2 image pre-warmed and cached.');
+    }
+  } catch (err) { console.error('❌ Pre-warm Type 2 failed:', (err as Error).message); }
 }
 
 const isTestRun        = process.argv.includes('--test');
