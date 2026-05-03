@@ -139,16 +139,19 @@ Choose EXPRESSION based on EMOTION:
 POST CATEGORY: [Milestone / Community / Industry Reaction / Update]
 WHAT HAPPENED: [one sentence]
 WHY THIS MATTERS: [one sentence — what it means for emerging filmmakers]
-SHOULD ADIRA BE IN THIS? Yes
+SHOULD ADIRA BE IN THIS?
+  Write "Yes" for: COUNT_MILESTONE (big signup numbers), FIRST_FEMALE, FIRST_NEW_CITY, WEEKLY_SUMMARY — posts where ADIRA's presence adds warmth and personality.
+  Write "No" for: VIEW_MILESTONE, DAILY_UPDATE, any stats-heavy post — use a concept visual instead. Examples: a cinema map of India with city dots, a film strip with numbers, an empty director's chair under a spotlight.
+  When "No": SCENE describes the concept visual, not a location for ADIRA.
 ADIRA'S ROLE: [Reporting / Reacting / Observing / Announcing]
-SCENE: [specific environment — rotate: news desk / coffee shop / festival press row / editing suite / rooftop]
-ACTION: [active verb + specific action — e.g. "leaning forward scanning her laptop as breaking numbers appear" NOT just "sitting"]
-EXPRESSION: [full description — eyes: X, brows: X, mouth: X, posture: X, hands: X]
-WARDROBE: [rotate: white shirt + press lanyard / blazer + lanyard / kurta + lanyard / field jacket + lanyard]
-PROPS: [press lanyard reading "ADIRA / CineGrok" always + 1-2 relevant items]
-LIGHTING: [rotate: golden morning / cool afternoon / screen glow evening / dramatic side light]
+SCENE: [if Yes: specific location. If No: describe concept visual — e.g. "map of India with glowing city dots", "empty film set with single chair under spotlight"]
+ACTION: [if Yes: what ADIRA does. If No: describe the visual — e.g. "dots of light appearing across the map one by one"]
+EXPRESSION: [if Yes: full face/body description. If No: N/A — concept image]
+WARDROBE: [if Yes: specific. If No: N/A]
+PROPS: [if Yes: press lanyard + items. If No: concept-relevant props]
+LIGHTING: [specific lighting mood]
 MOOD: [one word]
-SPEECH BUBBLE: [one punchy sentence in ADIRA's voice that she'd say in this moment — under 10 words, no hashtags]
+SPEECH BUBBLE: [one punchy line — if Yes: what ADIRA says. If No: short text that could overlay the concept image]
 
 [IMAGE_STYLE]
 <Pick one: Cinematic / Moody / Surreal — based on today's tone>

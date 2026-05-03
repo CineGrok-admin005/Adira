@@ -112,16 +112,19 @@ Choose EXPRESSION based on EMOTION:
 POST CATEGORY: [Commentary / Industry Reaction / News]
 WHAT HAPPENED: [one sentence]
 WHY THIS MATTERS: [what it means for emerging filmmakers]
-SHOULD ADIRA BE IN THIS? Yes
+SHOULD ADIRA BE IN THIS?
+  Write "No" when: the story is about a specific film, show, festival, or person (e.g. Raja Shivaji, Netflix India slate, MAMI lineup). The image should be a cinematic concept visual — a film set, a spotlight, a clapperboard, a festival marquee. No character needed.
+  Write "Yes" when: ADIRA is making a personal observation about the filmmaker community itself, or the post is about CineGrok's own growth and voice.
+  Rule of thumb: if the image would say MORE by showing the subject rather than the reporter — write No.
 ADIRA'S ROLE: [Reporting / Reacting / Observing]
-SCENE: [specific — rotate: news desk / coffee shop / festival press row / editing suite / rooftop]
-ACTION: [active verb — e.g. "turning to face camera with notepad mid-sentence" NOT just "sitting"]
-EXPRESSION: [full description — eyes: X, brows: X, mouth: X, posture: X, hands: X]
-WARDROBE: [rotate: white shirt + lanyard / blazer + lanyard / kurta + lanyard / field jacket + lanyard]
-PROPS: [press lanyard "ADIRA / CineGrok" always + 1-2 relevant items]
-LIGHTING: [rotate: golden morning / cool afternoon / screen glow evening / dramatic side light]
+SCENE: [if Yes: specific location for ADIRA. If No: describe the concept visual — e.g. "empty cinema with single spotlight on stage", "film clapperboard against a dark background with city lights"]
+ACTION: [if Yes: active verb describing ADIRA. If No: describe the visual action — e.g. "spotlight fading in", "clapperboard snapping shut"]
+EXPRESSION: [if Yes: full face/body description. If No: write "N/A — concept image"]
+WARDROBE: [if Yes: specific clothing. If No: write "N/A"]
+PROPS: [if Yes: press lanyard "ADIRA / CineGrok" + items. If No: props relevant to the concept]
+LIGHTING: [specific lighting mood regardless]
 MOOD: [one word]
-SPEECH BUBBLE: [one punchy sentence ADIRA says in this moment — under 10 words, in her voice]
+SPEECH BUBBLE: [one punchy sentence — if Yes: what ADIRA says. If No: a short quote that could appear as a text overlay on the concept image]
 
 [IMAGE_STYLE]
 One of: Cinematic / Moody / Surreal`;
