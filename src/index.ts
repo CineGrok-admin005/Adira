@@ -185,8 +185,22 @@ export async function runCommentaryAgent(): Promise<void> {
         .eq('status', 'posted')
         .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-      const usedUrls = new Set((recentlyPosted || []).map((r: { data: { youtubeVideo?: { url?: string } } }) => r.data?.youtubeVideo?.url).filter(Boolean));
-      const freshStories = stories.filter(s => !usedUrls.has(s.youtubeVideo.url));
+      // Deduplicate by URL AND by topic (proper noun overlap) — prevents same film reviewed by different channels
+      const usedUrls   = new Set((recentlyPosted || []).map((r: { data: { youtubeVideo?: { url?: string } } }) => r.data?.youtubeVideo?.url).filter(Boolean));
+      const usedTitles = (recentlyPosted || []).map((r: { data: { youtubeVideo?: { title?: string } } }) => r.data?.youtubeVideo?.title || '').filter(Boolean);
+
+      function titleProperNouns(title: string): string[] {
+        return (title.match(/\b[A-Z][a-zA-Z]{1,}\b/g) || []).filter(w => w.length > 2);
+      }
+      function topicAlreadyCovered(title: string): boolean {
+        const nouns = titleProperNouns(title);
+        return usedTitles.some(used => {
+          const usedNouns = titleProperNouns(used);
+          return nouns.some(n => usedNouns.some(u => u.toLowerCase() === n.toLowerCase()));
+        });
+      }
+
+      const freshStories = stories.filter(s => !usedUrls.has(s.youtubeVideo.url) && !topicAlreadyCovered(s.youtubeVideo.title));
 
       if (freshStories.length === 0) {
         console.log('💤 All organic stories already posted today. Checking backlog...');
@@ -238,8 +252,8 @@ export async function runCommentaryAgent(): Promise<void> {
     if (backlogId) {
       await markBacklogItemPosted(backlogId);
     } else {
-      // Organic story — push as 'posted' so it's tracked for deduplication
-      await pushToBacklog('COMMENTARY', 0, { youtubeVideo: { url: post.sourceStory.url } }, 1);
+      // Organic story — push as 'posted' with title for topic-based deduplication
+      await pushToBacklog('COMMENTARY', 0, { youtubeVideo: { url: post.sourceStory.url, title: post.sourceStory.title } }, 1);
       // Immediately mark it posted
       const { data: inserted } = await (await import('./supabase/client')).serviceClient
         .from('content_backlog')

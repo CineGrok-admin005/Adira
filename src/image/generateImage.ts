@@ -65,7 +65,7 @@ async function addSpeechBubble(imageBuffer: Buffer, text: string): Promise<Buffe
     .toBuffer();
 }
 
-async function attemptGeneration(token: string, positive: string, negative: string): Promise<Buffer | null> {
+async function attemptGeneration(token: string, positive: string, negative: string, idWeight = 1): Promise<Buffer | null> {
   // Resize avatar to 512px before base64 — original is 6MB which times out on Railway
   const resized  = await sharp(readFileSync(AVATAR_PATH)).resize(512, 512, { fit: 'cover' }).png({ compressionLevel: 9 }).toBuffer();
   const avatarB64 = resized.toString('base64');
@@ -73,7 +73,7 @@ async function attemptGeneration(token: string, positive: string, negative: stri
 
   const submitRes = await axios.post(
     `${SPACE_URL}/call/generate_image`,
-    { data: [positive, imageData, 1, 4, '-1', 1, 1024, 1024, 28, 1, negative, 1, 128] },
+    { data: [positive, imageData, 1, 4, '-1', 1, 1024, 1024, 28, idWeight, negative, 1, 128] },
     { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 30000 }
   );
 
@@ -115,13 +115,37 @@ export async function generateAdiraImage(prompt: string, style: string, emotion:
   const token = process.env.HUGGINGFACE_API_KEY;
   if (!token) return null;
 
-  const { positive, negative } = buildPuLIDPrompt(prompt, style, emotion);
+  // Check if ADIRA should appear — if not, use pure FLUX (id_weight=0, concept image)
+  const adiraInImage = !/SHOULD ADIRA BE IN THIS\?\s*No/i.test(prompt);
+  const idWeight = adiraInImage ? 1 : 0;
+
+  // For concept images, use the scene/concept description directly without character prompts
+  let positive: string;
+  let negative: string;
+  if (adiraInImage) {
+    ({ positive, negative } = buildPuLIDPrompt(prompt, style, emotion));
+  } else {
+    // Extract scene from imagePrompt for concept image
+    const sceneMatch = prompt.match(/SCENE:\s*(.+)/i);
+    const moodMatch  = prompt.match(/MOOD:\s*(.+)/i);
+    const scene = sceneMatch?.[1]?.trim() ?? prompt.slice(0, 200);
+    const mood  = moodMatch?.[1]?.trim() ?? 'cinematic';
+    const styleMap: Record<string, string> = {
+      Cinematic: '2D animated illustration, graphic novel art style, flat cel-shading, bold outlines, Indian cinema poster aesthetic, NO people',
+      Moody:     '2D animated illustration, graphic novel art style, moody dramatic, cel-shaded, bold outlines, NO people',
+      Surreal:   '2D animated illustration, surreal graphic novel style, cel-shaded, dreamlike, NO people',
+    };
+    positive = `${scene}, ${mood} mood, ${styleMap[style] ?? styleMap.Cinematic}, high quality, detailed, cinegrok film platform`;
+    negative = '(photorealistic:1.3), photograph, realistic, text, watermark, ugly, blurry, deformed';
+    console.log(`🖼️  Concept image mode (no ADIRA) — scene: ${scene.slice(0, 60)}...`);
+  }
+
   const MAX_ATTEMPTS = 3;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
-      console.log(`🖼️  Generating ADIRA image — emotion: ${emotion} (attempt ${attempt}/${MAX_ATTEMPTS})...`);
-      const imageRaw = await attemptGeneration(token, positive, negative);
+      console.log(`🖼️  Generating image — ${adiraInImage ? `ADIRA, emotion: ${emotion}` : 'concept'} (attempt ${attempt}/${MAX_ATTEMPTS})...`);
+      const imageRaw = await attemptGeneration(token, positive, negative, idWeight);
       if (imageRaw) {
         console.log('✅ Image generated.');
         return speechBubble ? addSpeechBubble(imageRaw, speechBubble) : imageRaw;
