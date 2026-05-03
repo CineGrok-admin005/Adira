@@ -104,6 +104,7 @@ export interface CommentaryPost {
   emotion: EmotionState;
   audience: AudienceMode;
   imageBuffer?: Buffer;
+  instagramBrief?: string;
 }
 
 export interface MilestoneEvent {

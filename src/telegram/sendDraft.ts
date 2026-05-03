@@ -82,6 +82,10 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
     );
   }
 
+  if (post.instagramBrief) {
+    await bot.sendMessage(chatId, `📋 <b>INSTAGRAM BRIEF — paste into Claude.ai project</b>\n\n<code>${h(post.instagramBrief)}</code>`, { parse_mode: 'HTML' });
+  }
+
   console.log('✅ Commentary draft sent to Telegram');
 }
 

@@ -127,7 +127,21 @@ MOOD: [one word]
 SPEECH BUBBLE: [one punchy sentence — if Yes: what ADIRA says. If No: a short quote that could appear as a text overlay on the concept image]
 
 [IMAGE_STYLE]
-One of: Cinematic / Moody / Surreal`;
+One of: Cinematic / Moody / Surreal
+
+[INSTAGRAM_BRIEF]
+Write a brief for Claude to generate a high-quality Instagram carousel. Format EXACTLY as shown:
+
+PILLAR: [pick the most relevant: CRAFT BREAKDOWN / INDUSTRY PULSE / FILMMAKER SPOTLIGHT / EDUCATIONAL FRAMEWORK / COMMUNITY QUESTION]
+
+CORE STORY IN ONE LINE: [the single most interesting angle from this story for an emerging filmmaker]
+
+KEY DATA POINTS:
+- [2-3 bullet facts from the story that matter most to emerging filmmakers]
+
+EMOTIONAL ANGLE: [what feeling should this carousel leave — felt seen / learned something / want to act / surprised]
+
+SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest version of the point]`;
 
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
@@ -151,8 +165,9 @@ One of: Cinematic / Moody / Surreal`;
   const twitterMatch    = text.match(/\[TWITTER\]\s*([\s\S]*?)(?=\[TONE\])/);
   const toneMatch        = text.match(/\[TONE\]\s*([\s\S]*?)(?=\[EMOTION\]|\[IMAGE_PROMPT\])/);
   const emotionMatch     = text.match(/\[EMOTION\]\s*(excited|thoughtful|reporting|serious|warm)/i);
-  const imagePromptMatch = text.match(/\[IMAGE_PROMPT\]\s*([\s\S]*?)(?=\[IMAGE_STYLE\])/);
-  const imageStyleMatch  = text.match(/\[IMAGE_STYLE\]\s*(Cinematic|Moody|Surreal)/);
+  const imagePromptMatch    = text.match(/\[IMAGE_PROMPT\]\s*([\s\S]*?)(?=\[IMAGE_STYLE\])/);
+  const imageStyleMatch     = text.match(/\[IMAGE_STYLE\]\s*(Cinematic|Moody|Surreal)/);
+  const instagramBriefMatch = text.match(/\[INSTAGRAM_BRIEF\]\s*([\s\S]*?)$/);
 
   const SIG = '\n\nhttps://cinegrok.in\n— ADIRA, CineGrok';
   const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
@@ -196,5 +211,6 @@ One of: Cinematic / Moody / Surreal`;
     imageStyle: (imageStyleMatch?.[1] as 'Cinematic' | 'Moody' | 'Surreal') ?? 'Cinematic',
     emotion,
     audience,
+    instagramBrief: instagramBriefMatch?.[1]?.trim(),
   };
 }
