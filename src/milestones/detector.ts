@@ -1,8 +1,7 @@
 import { GrowthData, MilestoneEvent } from '../types';
 
-const VIEW_MILESTONES         = [100, 250, 500, 1000, 2500, 5000, 10000];
-const COLLABORATION_MILESTONES = [5, 10, 25, 50, 100];
-const CITY_MILESTONES          = [5, 10, 15, 20, 25, 30, 50];
+const VIEW_MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000];
+const CITY_MILESTONES = [5, 10, 15, 20, 25, 30, 50];
 
 function crossedToday(milestones: number[], current: number, addedToday: number): number | null {
   return milestones.find(m => current >= m && current - addedToday < m) ?? null;
@@ -54,8 +53,10 @@ export function detectAllMilestones(data: GrowthData): MilestoneEvent[] {
     });
   }
 
-  // Priority 5: City count milestone
-  const cityMilestone = CITY_MILESTONES.find(m => data.uniqueCities === m);
+  // Priority 5: City count milestone — only fire if a new city was added today
+  const cityMilestone = data.firstFromNewCity
+    ? CITY_MILESTONES.find(m => data.uniqueCities === m)
+    : null;
   if (cityMilestone) {
     milestones.push({
       hasMilestone: true,
