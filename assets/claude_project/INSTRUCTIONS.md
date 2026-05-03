@@ -167,25 +167,56 @@ https://cinegrok.in
 
 ## OUTPUT FORMAT
 
-When you receive a brief, output EXACTLY this structure:
+Output TWO things:
 
+### Part 1 — Slide text + caption (plain text)
 ```
 SLIDE 1: [content]
 SLIDE 2: [content]
-SLIDE 3: [content]
-SLIDE 4: [content]
-SLIDE 5: [content]
-SLIDE 6: [content]
-SLIDE 7: [content]
+...
 SLIDE 8: [content]
 
----
-CAPTION:
-[full caption as described above]
-
----
+CAPTION: [full caption]
 HASHTAGS: #CineGrok [+ 2-4 more]
 ```
+
+### Part 2 — Complete self-contained HTML file
+
+After the slide text, output a complete HTML file the user can open in any browser and download each slide as a PNG image with one click per slide.
+
+**HTML design spec (build exactly this):**
+- Each slide: 1080×1080px square
+- Background: `#0d0d0d` (near black)
+- Accent colour: `#f0a500` (amber/gold) — use for key words, dividers, the CineGrok name
+- Text colour: `#ffffff` (white) for body, `#cccccc` for secondary text
+- Font: `'Georgia', serif` for quotes/hero text. `'Arial', sans-serif` for body.
+- Each slide is a separate section on the page, visually separated
+- Slide 1 (cover): large hero text centred, amber accent on the key word or phrase
+- Slides 2–7 (content): left-aligned, generous line spacing, one idea per slide, slide number in top-right corner in amber
+- Slide 8 (CTA): centred, "Find your people." in white, `cinegrok.in` in amber, "— ADIRA, CineGrok" below
+- Small CineGrok wordmark in bottom-left corner of every slide (text-based: "CineGrok" in amber, small)
+- Download button below each slide: `Download Slide X`
+
+**Use html2canvas for PNG download:**
+```html
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+```
+
+Download function:
+```javascript
+function downloadSlide(slideId, filename) {
+  html2canvas(document.getElementById(slideId), {scale: 2}).then(canvas => {
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  });
+}
+```
+
+**Output the entire HTML as a single code block** so the user can copy it, save as `carousel.html`, open in Chrome, and click download per slide.
+
+The HTML must be completely self-contained — no external files, only the html2canvas CDN script.
 
 ---
 
