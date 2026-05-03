@@ -1,0 +1,49 @@
+name: ADIRA — Commentary Posts (1 PM + 7 PM IST)
+
+on:
+  schedule:
+    # 1:00 PM IST = 7:30 AM UTC
+    - cron: '30 7 * * *'
+    # 7:00 PM IST = 1:30 PM UTC
+    - cron: '30 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Run ADIRA commentary
+        run: npx ts-node src/index.ts --run-commentary
+        env:
+          SUPABASE_URL:               ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY:          ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY:  ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY:          ${{ secrets.ANTHROPIC_API_KEY }}
+          GROQ_API_KEY:               ${{ secrets.GROQ_API_KEY }}
+          HUGGINGFACE_API_KEY:        ${{ secrets.HUGGINGFACE_API_KEY }}
+          TELEGRAM_BOT_TOKEN:         ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:           ${{ secrets.TELEGRAM_CHAT_ID }}
+          LINKEDIN_ACCESS_TOKEN:      ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_ID:         ${{ secrets.LINKEDIN_PERSON_ID }}
+          LINKEDIN_ORGANIZATION_ID:   ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
+          LINKEDIN_TOKEN_EXPIRES_AT:  ${{ secrets.LINKEDIN_TOKEN_EXPIRES_AT }}
+          TWITTER_API_KEY:            ${{ secrets.TWITTER_API_KEY }}
+          TWITTER_API_SECRET:         ${{ secrets.TWITTER_API_SECRET }}
+          TWITTER_ACCESS_TOKEN:       ${{ secrets.TWITTER_ACCESS_TOKEN }}
+          TWITTER_ACCESS_SECRET:      ${{ secrets.TWITTER_ACCESS_SECRET }}
+          YOUTUBE_API_KEY:            ${{ secrets.YOUTUBE_API_KEY }}
+          TWITTER_ENABLED:            'false'
+          AUTO_POST:                  'true'
+          NODE_ENV:                   production
+          TIMEZONE:                   Asia/Kolkata

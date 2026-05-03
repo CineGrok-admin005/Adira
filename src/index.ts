@@ -326,6 +326,10 @@ const isTestRun        = process.argv.includes('--test');
 const isDryRun         = process.argv.includes('--dry-run');
 const isIntroduce      = process.argv.includes('--introduce');
 const isCommentaryTest = process.argv.includes('--commentary');
+const isRunGrowth      = process.argv.includes('--run-growth');      // GitHub Actions trigger
+const isRunCommentary  = process.argv.includes('--run-commentary');   // GitHub Actions trigger
+const isPreWarm1       = process.argv.includes('--prewarm-growth');
+const isPreWarm2       = process.argv.includes('--prewarm-commentary');
 
 if (isIntroduce) {
   runIntroduction();
@@ -337,6 +341,17 @@ if (isIntroduce) {
 } else if (isTestRun) {
   console.log('🧪 TEST MODE — Running agent once, will send to Telegram...');
   runGrowthAgent(false);
+} else if (isRunGrowth) {
+  // Called by GitHub Actions at 8 AM IST — runs once and exits
+  runGrowthAgent(false);
+} else if (isRunCommentary) {
+  // Called by GitHub Actions at 1 PM and 7 PM IST — runs once and exits
+  runCommentaryAgent();
+} else if (isPreWarm1) {
+  preWarmType1();
+} else if (isPreWarm2) {
+  preWarmType2();
 } else {
+  // Fallback: Railway persistent mode with node-cron scheduler
   startScheduler();
 }
