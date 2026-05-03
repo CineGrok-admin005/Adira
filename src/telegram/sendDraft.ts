@@ -48,6 +48,10 @@ export async function sendDraftToFounder(posts: GeneratedPosts): Promise<void> {
     await bot.sendMessage(chatId, `🎨 <b>IMAGE PROMPT</b> — ${posts.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(posts.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`, html);
   }
 
+  if (posts.instagramBrief) {
+    await bot.sendMessage(chatId, `📋 <b>INSTAGRAM BRIEF — paste into Claude.ai project</b>\n\n<code>${h(posts.instagramBrief)}</code>`, html);
+  }
+
   console.log('✅ Draft sent to Telegram successfully');
 }
 

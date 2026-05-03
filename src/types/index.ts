@@ -62,6 +62,7 @@ export interface GeneratedPosts {
   emotion: EmotionState;
   audience: AudienceMode;
   imageBuffer?: Buffer;
+  instagramBrief?: string; // brief for Claude.ai project carousel generation
 }
 
 export interface YouTubeVideo {

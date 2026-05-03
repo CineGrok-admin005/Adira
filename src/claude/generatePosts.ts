@@ -165,7 +165,28 @@ RULES:
 - When a joiner has an Instagram handle, tag them in the Instagram post (e.g. @mayapatel)
 - When a joiner has a Twitter handle, tag them in the Twitter post
 - Always include the filmmaker's CineGrok profile link (e.g. cinegrok.in/filmmakers/maya-patel) in at least one platform's post
-- On LinkedIn, include the full LinkedIn URL of the filmmaker if available`;
+- On LinkedIn, include the full LinkedIn URL of the filmmaker if available
+
+[INSTAGRAM_BRIEF]
+Write a brief for Claude to generate a high-quality Instagram carousel. This brief will be pasted into a separate Claude project. Format EXACTLY as shown:
+
+PILLAR: [pick the most relevant from: CRAFT BREAKDOWN / INDUSTRY PULSE / FILMMAKER SPOTLIGHT / HONEST PROCESS / EDUCATIONAL FRAMEWORK / TOOLS AND RESOURCES / COMMUNITY QUESTION]
+
+CORE STORY IN ONE LINE: [the single most interesting fact or angle from today's data]
+
+KEY DATA POINTS:
+- [bullet each relevant fact: cities, roles, view counts, filmmaker names with handles, milestone numbers]
+
+FILMMAKER DETAILS (if relevant):
+- Name: [first name only]
+- City: [city, state]
+- Role: [their role]
+- CineGrok: [their profile URL]
+- Instagram: [their handle if available]
+
+EMOTIONAL ANGLE: [what feeling should this carousel leave the reader with — felt seen / learned something / want to act / surprised]
+
+SUGGESTED HOOK FOR SLIDE 1: [one sharp, specific opening line — the sharpest version of the point]`;
 
   const response = await client.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
@@ -184,7 +205,8 @@ RULES:
   const twitterMatch   = text.match(/\[TWITTER\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[EMOTION\]|\[IMAGE_PROMPT\])/);
   const emotionMatch   = text.match(/\[EMOTION\]\s*(excited|thoughtful|reporting|serious|warm)/i);
   const imagePromptMatch = text.match(/\[IMAGE_PROMPT\]\n([\s\S]*?)(?=\[IMAGE_STYLE\])/);
-  const imageStyleMatch  = text.match(/\[IMAGE_STYLE\]\n([\s\S]*?)$/);
+  const imageStyleMatch     = text.match(/\[IMAGE_STYLE\]\n([\s\S]*?)(?=\[INSTAGRAM_BRIEF\]|$)/);
+  const instagramBriefMatch = text.match(/\[INSTAGRAM_BRIEF\]\n([\s\S]*?)$/);
 
   // Parse tones for memory
   const instaTone   = text.match(/\[INSTAGRAM\]\n\[TONE:\s*([^\]]+)\]/)?.[1]?.trim() ?? 'unknown';
@@ -259,5 +281,6 @@ RULES:
     imageStyle,
     emotion,
     audience,
+    instagramBrief: instagramBriefMatch?.[1]?.trim(),
   };
 }
