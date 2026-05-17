@@ -3,7 +3,7 @@ dotenv.config();
 
 import { fetchGrowthData, fetchDemoFilterDiagnostic } from './supabase/queries';
 import { sanitizeForPublic } from './privacy/sanitize';
-import type { MilestoneEvent } from './types';
+import type { MilestoneEvent, VerifiedStory } from './types';
 import { generatePosts } from './claude/generatePosts';
 import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft } from './telegram/sendDraft';
 import { getIntroductionPosts } from './aria/introduce';
@@ -177,8 +177,16 @@ export async function runCommentaryAgent(): Promise<void> {
 
     console.log(`   YouTube: ${videos.length} video(s) | News: ${news.length} item(s)`);
 
-    const stories = crossVerify(videos, news);
-    console.log(`   Cross-verified: ${stories.length} story/stories confirmed`);
+    const crossVerified = crossVerify(videos, news);
+    console.log(`   Cross-verified: ${crossVerified.length} story/stories confirmed`);
+
+    // Google News RSS is frequently blocked on cloud/CI runner IPs — fall back to YouTube-only
+    const stories: VerifiedStory[] = crossVerified.length > 0
+      ? crossVerified
+      : videos.slice(0, 8).map(v => ({ youtubeVideo: v, matchingNews: [], matchScore: 0 }));
+    if (crossVerified.length === 0 && videos.length > 0) {
+      console.log(`   📺 Google News unavailable — using YouTube-only (${stories.length} videos)`);
+    }
 
     let post = null;
     let backlogId: string | null = null;
@@ -221,6 +229,11 @@ export async function runCommentaryAgent(): Promise<void> {
             if (i !== usedIdx) {
               await pushToBacklog('COMMENTARY', 5 - i, freshStories[i], 2);
             }
+          }
+        } else if (!post && freshStories.length > 1) {
+          // Groq said NO_WORTHWHILE_STORY — still queue other stories so future runs can try
+          for (let i = 0; i < Math.min(freshStories.length, 5); i++) {
+            await pushToBacklog('COMMENTARY', 5 - i, freshStories[i], 2);
           }
         }
       }
