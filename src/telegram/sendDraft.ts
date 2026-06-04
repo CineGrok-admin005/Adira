@@ -67,8 +67,9 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
     { parse_mode: 'HTML' }
   );
 
-  // Message 2-4: one per platform (each independently copyable on mobile)
-  await bot.sendMessage(chatId, `📸 <b>INSTAGRAM</b>\n\n${h(post.instagram)}`, { parse_mode: 'HTML' });
+  // One message per platform (each independently copyable on mobile).
+  // Instagram is handled via the INSTAGRAM BRIEF below (carousel project writes the caption),
+  // so we don't send a standalone Instagram caption here.
   await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(post.linkedin)}\n\n<i>💬 Tip: paste https://cinegrok.in as the FIRST COMMENT — not in the post — for max reach.</i>`,   { parse_mode: 'HTML' });
   await bot.sendMessage(chatId, `🐦 <b>TWEET BRIEF — paste into your Tweets Claude project</b>\n<i>Claude writes the actual tweet + a bonus viral one.</i>\n\n<code>${h(post.tweetBrief)}</code>`, { parse_mode: 'HTML' });
 
