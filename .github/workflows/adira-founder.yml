@@ -1,10 +1,12 @@
 name: ADIRA — Sivaji Founder Post (every ~2 days)
 
-# Triggered by an external cron service (cron-job.org) via the workflow_dispatch
-# REST API, scheduled every ~2 days. Topic rotates deterministically by date in
-# code, so the schedule alone controls cadence. Manual posting only (no AUTO_POST).
+# Runs on GitHub's built-in scheduler every ~2 days. Topic rotates
+# deterministically by date in code, so the schedule alone controls cadence.
+# Manual posting only (no AUTO_POST). Free-tier scheduled runs can be delayed.
 on:
-  workflow_dispatch: # external cron + manual trigger from GitHub UI
+  schedule:
+    - cron: '30 5 */2 * *'  # ~every 2 days, 11:00 AM IST (UTC+5:30)
+  workflow_dispatch:
 
 jobs:
   run:

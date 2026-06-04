@@ -1,11 +1,12 @@
 name: ADIRA — Growth Report (8 AM IST)
 
-# Triggered on time by an external cron service (cron-job.org) via the
-# workflow_dispatch REST API. GitHub's own `schedule:` cron was removed because
-# it fires hours late on the free tier (and would double-post alongside the
-# external trigger). Keep workflow_dispatch so it can be fired by API or by hand.
+# Runs on GitHub's built-in scheduler. Note: free-tier scheduled runs can be
+# delayed (sometimes by a few hours) during high load — that's a GitHub
+# limitation. workflow_dispatch is kept so it can also be triggered by hand.
 on:
-  workflow_dispatch: # external cron + manual trigger from GitHub UI
+  schedule:
+    - cron: '30 2 * * *'   # 8:00 AM IST (UTC+5:30)
+  workflow_dispatch:
 
 jobs:
   run:
