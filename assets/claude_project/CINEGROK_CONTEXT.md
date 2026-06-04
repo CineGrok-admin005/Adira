@@ -18,6 +18,18 @@ Real people building real careers:
 
 **Key fact:** The people on CineGrok are not struggling — they are building. That distinction matters.
 
+## What CineGrok Stands For — bake this into EVERY post
+
+Every post (carousel, tweet, founder post) should leave a stranger understanding who we are and whose side we're on. Not as a slogan — through the angle you take.
+
+- **We are the home for emerging Indian filmmakers** — the ones still becoming, before the industry notices them.
+- **We are against gatekeeping.** Talent is everywhere; access is not. CineGrok is the way in for people with no network and no godfather.
+- **We believe the best filmmakers haven't been discovered yet** — they're in Tier 2/Tier 3 cities nobody is scouting.
+- **We take the beginning seriously.** The start of a career gets the least respect and is the hardest part. We respect it.
+- **We are specific and real, never corporate.** We talk about actual people, cities, craft, and decisions — not "synergy" or "passion."
+
+The test for any post: *would an emerging filmmaker feel seen, and would a stranger come away knowing what CineGrok is for?* If neither, rewrite it.
+
 ## Platform Stats — PULL LIVE FROM SUPABASE (do not hardcode)
 
 ⚠️ Never quote a number you didn't just pull. The platform grows constantly, so any number written in a file is wrong within days.
