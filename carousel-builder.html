@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineGrok — Carousel Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400;1,700&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Anton&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,600;1,300&family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --app-bg:#0c0c0c;--panel:#111;--panel2:#161616;
+  --border:#222;--border2:#2a2a2a;
+  --accent:#f0a500;--accent2:rgba(240,165,0,.12);
+  --text:#e8e8e8;--dim:#555;--mid:#888;--green:#4caf7d;--red:#e05555;
+}
+html,body{height:100%;background:var(--app-bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+
+/* ── HEADER ── */
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:200;gap:12px;flex-wrap:wrap}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.1em;color:var(--accent);white-space:nowrap}
+.logo sub{font-family:'DM Sans',sans-serif;font-size:10px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-left:10px;vertical-align:middle}
+.header-actions{display:flex;gap:8px;align-items:center}
+.hbtn{background:none;border:1px solid var(--border2);color:var(--mid);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;letter-spacing:.15em;text-transform:uppercase;padding:7px 14px;cursor:pointer;transition:all .15s}
+.hbtn:hover{border-color:var(--accent);color:var(--accent)}
+.hbtn.primary{border-color:var(--accent);color:var(--accent)}
+.hbtn.primary:hover{background:var(--accent);color:#000}
+
+/* ── LAYOUT ── */
+.app{display:grid;grid-template-columns:360px 1fr;min-height:calc(100vh - 53px)}
+
+/* ── LEFT PANEL ── */
+.panel-left{background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;max-height:calc(100vh - 53px);position:sticky;top:53px}
+.panel-section{padding:18px 20px;border-bottom:1px solid var(--border)}
+.sec-label{font-size:9px;font-weight:600;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.sec-label span{font-weight:300;color:var(--dim);text-transform:none;letter-spacing:0;font-size:10px}
+
+/* SLIDE COUNT PICKER */
+.count-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.count-label{font-size:12px;font-weight:300;color:var(--mid);flex:1}
+.count-controls{display:flex;align-items:center;gap:0}
+.count-btn{width:32px;height:32px;background:var(--panel2);border:1px solid var(--border2);color:var(--text);font-size:16px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.count-btn:hover{border-color:var(--accent);color:var(--accent)}
+.count-val{width:44px;height:32px;background:#0a0a0a;border-top:1px solid var(--border2);border-bottom:1px solid var(--border2);border-left:none;border-right:none;color:var(--accent);font-family:'Space Mono',monospace;font-size:14px;text-align:center;outline:none}
+.count-presets{display:flex;gap:6px;flex-wrap:wrap}
+.preset-btn{padding:5px 10px;background:none;border:1px solid var(--border2);color:var(--dim);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s}
+.preset-btn:hover,.preset-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent2)}
+
+/* PASTE AREA */
+.paste-wrap textarea{width:100%;height:200px;background:#0a0a0a;border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;line-height:1.7;padding:12px;resize:vertical;outline:none;transition:border-color .2s}
+.paste-wrap textarea:focus{border-color:var(--accent)}
+.paste-wrap textarea::placeholder{color:var(--dim);font-style:italic;font-size:10px}
+.btn-row{display:flex;gap:8px;margin-top:8px}
+.parse-btn{flex:1;padding:10px;background:var(--accent);color:#000;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;transition:opacity .2s}
+.parse-btn:hover{opacity:.85}
+.clear-btn{padding:10px 14px;background:none;border:1px solid var(--border2);color:var(--dim);font-family:'DM Sans',sans-serif;font-size:10px;cursor:pointer;transition:all .15s}
+.clear-btn:hover{border-color:var(--red);color:var(--red)}
+
+/* THEMES */
+.themes-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.theme-card{border:1px solid var(--border);padding:12px 10px;cursor:pointer;transition:all .15s;position:relative}
+.theme-card:hover{border-color:#333;transform:translateY(-1px)}
+.theme-card.active{border-color:var(--accent);background:var(--accent2)}
+.theme-card.active::after{content:'✓';position:absolute;top:6px;right:8px;color:var(--accent);font-size:10px;font-weight:700}
+.theme-swatch{display:flex;gap:3px;margin-bottom:7px}
+.swatch{width:16px;height:16px;border-radius:2px;border:1px solid rgba(255,255,255,.08)}
+.theme-name{font-size:11px;font-weight:500;color:var(--text)}
+.theme-vibe{font-size:9px;color:var(--dim);margin-top:2px;font-style:italic}
+
+/* CUSTOM ACCENT COLOR */
+.color-row{display:flex;align-items:center;gap:10px;margin-top:12px}
+.color-row label{font-size:11px;font-weight:300;color:var(--mid);flex:1}
+.color-row input[type=color]{width:36px;height:28px;border:1px solid var(--border2);background:none;cursor:pointer;padding:2px}
+.color-preview{font-family:'Space Mono',monospace;font-size:10px;color:var(--mid)}
+
+/* SLIDES EDITOR */
+.slides-editor{display:flex;flex-direction:column;gap:6px}
+.slide-row{background:#0d0d0d;border:1px solid var(--border);overflow:hidden}
+.slide-row-header{display:flex;align-items:center;gap:8px;padding:9px 12px;cursor:pointer;user-select:none;transition:background .1s}
+.slide-row-header:hover{background:#141414}
+.slide-drag{color:var(--dim);font-size:12px;cursor:grab;padding:0 4px}
+.slide-num-badge{font-family:'Space Mono',monospace;font-size:9px;color:var(--accent);min-width:28px}
+.slide-row-preview{font-size:11px;font-weight:300;color:var(--mid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}
+.slide-row-toggle{font-size:10px;color:var(--dim);transition:transform .2s}
+.slide-row-toggle.open{transform:rotate(90deg)}
+.slide-row-body{display:none;padding:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:10px}
+.slide-row-body.open{display:flex}
+.field-label{font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+.slide-row-body input,.slide-row-body textarea{width:100%;background:#070707;border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;padding:8px 10px;outline:none}
+.slide-row-body input:focus,.slide-row-body textarea:focus{border-color:var(--accent)}
+.slide-row-body textarea{height:64px;resize:vertical;font-size:11px;font-family:'Space Mono',monospace;line-height:1.6}
+
+/* SLIDE CONTROLS ROW */
+.slide-controls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.slide-ctrl{display:flex;flex-direction:column;gap:4px}
+.ctrl-select{width:100%;background:#070707;border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;font-size:11px;padding:6px 8px;outline:none;cursor:pointer}
+.ctrl-select:focus{border-color:var(--accent)}
+
+/* BG IMAGE UPLOAD */
+.bg-upload-area{border:1px dashed var(--border2);padding:10px;text-align:center;cursor:pointer;transition:all .15s;position:relative}
+.bg-upload-area:hover{border-color:var(--accent);background:var(--accent2)}
+.bg-upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.bg-upload-label{font-size:10px;font-weight:300;color:var(--dim)}
+.bg-upload-label span{color:var(--accent)}
+.bg-thumb{width:100%;height:40px;object-fit:cover;margin-top:6px;border:1px solid var(--border)}
+.bg-clear{width:100%;margin-top:4px;padding:4px;background:none;border:1px solid var(--border2);color:var(--dim);font-size:9px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase}
+.bg-clear:hover{border-color:var(--red);color:var(--red)}
+
+/* FONT SIZE RANGE */
+.range-wrap{display:flex;align-items:center;gap:8px}
+.range-wrap input[type=range]{flex:1;accent-color:var(--accent);height:3px}
+.range-val{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent);min-width:28px;text-align:right}
+
+/* CAPTION SECTION */
+.caption-area{width:100%;height:120px;background:#0a0a0a;border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:11px;line-height:1.7;padding:12px;resize:vertical;outline:none}
+.caption-area:focus{border-color:var(--accent)}
+.copy-caption-btn{width:100%;margin-top:8px;padding:10px;background:none;border:1px solid var(--accent);color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;transition:all .2s}
+.copy-caption-btn:hover{background:var(--accent);color:#000}
+.copy-caption-btn.copied{border-color:var(--green);color:var(--green)}
+
+/* DOWNLOAD SECTION */
+.dl-section{display:flex;flex-direction:column;gap:8px}
+.dl-all-btn{width:100%;padding:13px;background:transparent;border:1px solid var(--accent);color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.dl-all-btn:hover{background:var(--accent);color:#000}
+.dl-all-btn:disabled{opacity:.4;cursor:not-allowed}
+.dl-zip-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border2);color:var(--mid);cursor:pointer;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;transition:all .2s}
+.dl-zip-btn:hover{border-color:var(--accent);color:var(--accent)}
+.dl-progress-bar{height:2px;background:var(--border);position:relative;overflow:hidden}
+.dl-progress-fill{height:100%;background:var(--accent);width:0%;transition:width .3s ease}
+.dl-progress-text{font-size:10px;color:var(--mid);text-align:center;font-family:'Space Mono',monospace;min-height:16px;margin-top:6px}
+
+/* PROMPT GUIDE MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:500;display:none;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border2);max-width:700px;width:100%;max-height:85vh;overflow-y:auto;position:relative}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--panel);z-index:2}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.1em;color:var(--accent)}
+.modal-close{background:none;border:none;color:var(--dim);font-size:20px;cursor:pointer;padding:4px 8px;transition:color .15s}
+.modal-close:hover{color:var(--text)}
+.modal-body{padding:24px}
+.guide-section{margin-bottom:28px}
+.guide-section h3{font-size:11px;font-weight:600;letter-spacing:.25em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.guide-section p{font-size:13px;font-weight:300;line-height:1.75;color:var(--mid);margin-bottom:10px}
+.guide-section p strong{color:var(--text);font-weight:500}
+.code-block{background:#0a0a0a;border:1px solid var(--border2);padding:14px 16px;font-family:'Space Mono',monospace;font-size:11px;line-height:1.8;color:#ccc;margin:10px 0;white-space:pre-wrap;position:relative}
+.copy-code-btn{position:absolute;top:8px;right:8px;background:none;border:1px solid var(--border2);color:var(--dim);font-size:9px;letter-spacing:.1em;padding:4px 8px;cursor:pointer;text-transform:uppercase;transition:all .15s}
+.copy-code-btn:hover{border-color:var(--accent);color:var(--accent)}
+.guide-tag{display:inline-block;background:var(--accent2);border:1px solid var(--accent);color:var(--accent);font-size:9px;letter-spacing:.1em;padding:2px 8px;margin:2px;font-family:'Space Mono',monospace}
+.tip-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.tip-list li{font-size:12px;font-weight:300;color:var(--mid);line-height:1.6;padding-left:16px;position:relative}
+.tip-list li::before{content:'→';position:absolute;left:0;color:var(--accent)}
+.tip-list li strong{color:var(--text);font-weight:500}
+
+/* ── RIGHT PANEL (PREVIEW) ── */
+.panel-right{padding:24px;overflow-y:auto;background:#141414}
+.preview-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.preview-title{font-size:10px;font-weight:300;letter-spacing:.25em;text-transform:uppercase;color:var(--dim)}
+.preview-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.col-switcher{display:flex;gap:3px;align-items:center}
+.col-lbl{font-size:9px;font-weight:300;letter-spacing:.15em;text-transform:uppercase;color:var(--dim);margin-right:4px}
+.col-btn{width:30px;height:26px;background:transparent;border:1px solid var(--border2);color:var(--dim);font-family:'Space Mono',monospace;font-size:10px;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center}
+.col-btn:hover{border-color:#444;color:var(--text)}
+.col-btn.active{border-color:var(--accent);color:var(--accent);background:var(--accent2)}
+.slide-count-badge{font-family:'Space Mono',monospace;font-size:10px;color:var(--accent)}
+
+/* GRID */
+.slides-preview{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.slides-preview.cols-1{grid-template-columns:1fr;max-width:560px;margin:0 auto}
+.slides-preview.cols-2{grid-template-columns:repeat(2,1fr)}
+.slides-preview.cols-3{grid-template-columns:repeat(3,1fr)}
+
+.slide-wrapper{display:flex;flex-direction:column;gap:6px}
+.slide-label-outer{font-family:'Space Mono',monospace;font-size:9px;color:var(--mid);display:flex;justify-content:space-between}
+.slide-label-num{color:var(--accent)}
+.slide-canvas-wrap{position:relative;width:100%;aspect-ratio:1;overflow:hidden;cursor:pointer;border:1px solid #2a2a2a;box-shadow:0 4px 20px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.03);background:#1a1a1a;transition:all .2s}
+.slide-canvas-wrap:hover{border-color:#444;box-shadow:0 8px 28px rgba(0,0,0,.7),0 0 0 1px rgba(240,165,0,.12)}
+.slide-canvas-wrap:hover .slide-dl-overlay{opacity:1}
+.slide-dl-overlay{position:absolute;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .2s;font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);backdrop-filter:blur(2px)}
+.slide-render{width:540px;height:540px;position:relative;overflow:hidden;transform-origin:top left}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--panel);border:1px solid var(--accent);color:var(--accent);font-family:'Space Mono',monospace;font-size:11px;padding:12px 20px;z-index:999;transform:translateY(80px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-color:var(--green);color:var(--green)}
+.toast.error{border-color:var(--red);color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header>
+  <div class="logo">CineGrok <sub>Carousel Builder</sub></div>
+  <div class="header-actions">
+    <button class="hbtn" onclick="openGuide()">📋 Prompt Guide</button>
+    <a class="hbtn" href="https://github.com/" target="_blank">⭐ GitHub</a>
+    <button class="hbtn primary" onclick="downloadAll()">↓ Download All</button>
+  </div>
+</header>
+
+<div class="app">
+
+<!-- ── LEFT PANEL ── -->
+<div class="panel-left">
+
+  <!-- STEP 0: SLIDE COUNT -->
+  <div class="panel-section">
+    <div class="sec-label">Step 1 — How many slides? <span>1–20</span></div>
+    <div class="count-row">
+      <span class="count-label">Number of slides</span>
+      <div class="count-controls">
+        <button class="count-btn" onclick="adjustCount(-1)">−</button>
+        <input class="count-val" id="countVal" type="number" min="1" max="20" value="8" onchange="setCount(parseInt(this.value))">
+        <button class="count-btn" onclick="adjustCount(1)">+</button>
+      </div>
+    </div>
+    <div class="count-presets">
+      <button class="preset-btn" onclick="setCount(3)">3</button>
+      <button class="preset-btn" onclick="setCount(5)">5</button>
+      <button class="preset-btn active" onclick="setCount(8)">8</button>
+      <button class="preset-btn" onclick="setCount(10)">10</button>
+      <button class="preset-btn" onclick="setCount(12)">12</button>
+      <button class="preset-btn" onclick="setCount(15)">15</button>
+      <button class="preset-btn" onclick="setCount(20)">20</button>
+    </div>
+  </div>
+
+  <!-- STEP 1: PASTE CONTENT -->
+  <div class="panel-section">
+    <div class="sec-label">Step 2 — Paste Content</div>
+    <div class="paste-wrap">
+      <textarea id="pasteInput" placeholder="Paste your slide content here.
+Format each slide as:
+SLIDE 1: Headline | Subtext
+SLIDE 2: Label | Heading | Body text
+SLIDE 3: Label | Heading | Body text
+...
+
+Use | to separate label, heading, body.
+Or paste free text — tool will parse it.
+See Prompt Guide for exact Claude format."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="parse-btn" onclick="parseInput()">↳ Parse Slides</button>
+      <button class="clear-btn" onclick="clearAll()">✕ Clear</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: THEME -->
+  <div class="panel-section">
+    <div class="sec-label">Step 3 — Theme</div>
+    <div class="themes-grid">
+      <div class="theme-card active" data-theme="1" onclick="selectTheme(1)">
+        <div class="theme-swatch"><div class="swatch" style="background:#0a0a0a"></div><div class="swatch" style="background:#f0a500"></div><div class="swatch" style="background:#ffffff"></div></div>
+        <div class="theme-name">Amber Editorial</div><div class="theme-vibe">CineGrok / Panchayat</div>
+      </div>
+      <div class="theme-card" data-theme="2" onclick="selectTheme(2)">
+        <div class="theme-swatch"><div class="swatch" style="background:#0e1520"></div><div class="swatch" style="background:#00d4ff"></div><div class="swatch" style="background:#f0f4f8"></div></div>
+        <div class="theme-name">Midnight Blue</div><div class="theme-vibe">Editorial / Tech</div>
+      </div>
+      <div class="theme-card" data-theme="3" onclick="selectTheme(3)">
+        <div class="theme-swatch"><div class="swatch" style="background:#0d1a10"></div><div class="swatch" style="background:#c9a84c"></div><div class="swatch" style="background:#e8dfc8"></div></div>
+        <div class="theme-name">Forest Gold</div><div class="theme-vibe">Literary / Intimate</div>
+      </div>
+      <div class="theme-card" data-theme="4" onclick="selectTheme(4)">
+        <div class="theme-swatch"><div class="swatch" style="background:#120404"></div><div class="swatch" style="background:#e02010"></div><div class="swatch" style="background:#f5ede0"></div></div>
+        <div class="theme-name">Blood Red</div><div class="theme-vibe">Poster / Bold</div>
+      </div>
+      <div class="theme-card" data-theme="5" onclick="selectTheme(5)">
+        <div class="theme-swatch"><div class="swatch" style="background:#1a1410"></div><div class="swatch" style="background:#c47a6a"></div><div class="swatch" style="background:#e8c8b8"></div></div>
+        <div class="theme-name">Warm Rose</div><div class="theme-vibe">Magazine / Craft</div>
+      </div>
+      <div class="theme-card" data-theme="6" onclick="selectTheme(6)">
+        <div class="theme-swatch"><div class="swatch" style="background:#050505"></div><div class="swatch" style="background:#d4f000"></div><div class="swatch" style="background:#ffffff"></div></div>
+        <div class="theme-name">Acid Yellow</div><div class="theme-vibe">Brutal / High-contrast</div>
+      </div>
+    </div>
+    <!-- Custom accent color -->
+    <div class="color-row">
+      <label>Custom accent colour</label>
+      <input type="color" id="customAccent" value="#f0a500" oninput="setCustomAccent(this.value)">
+      <span class="color-preview" id="accentHex">#f0a500</span>
+    </div>
+  </div>
+
+  <!-- STEP 3: EDIT SLIDES -->
+  <div class="panel-section">
+    <div class="sec-label">Step 4 — Edit Slides <span>click to expand</span></div>
+    <div class="slides-editor" id="slidesEditor">
+      <div style="font-size:11px;font-style:italic;color:var(--dim);padding:4px 0">Parse content above to edit individual slides.</div>
+    </div>
+  </div>
+
+  <!-- CAPTION -->
+  <div class="panel-section">
+    <div class="sec-label">Step 5 — Caption</div>
+    <textarea class="caption-area" id="captionArea" placeholder="Paste your Instagram caption here. It won't appear on slides — just stored here for easy copy-paste when you upload."></textarea>
+    <button class="copy-caption-btn" id="copyCaptionBtn" onclick="copyCaption()">Copy Caption</button>
+  </div>
+
+  <!-- DOWNLOAD -->
+  <div class="panel-section">
+    <div class="sec-label">Step 6 — Download</div>
+    <div class="dl-section">
+      <button class="dl-all-btn" id="dlAllBtn" onclick="downloadAll()">
+        <span>↓</span> <span id="dlBtnLabel">Download All Slides (PNG)</span>
+      </button>
+      <button class="dl-zip-btn" id="dlZipBtn" onclick="downloadZip()">⬇ Download as ZIP (named in order)</button>
+      <div class="dl-progress-bar"><div class="dl-progress-fill" id="dlFill"></div></div>
+      <div class="dl-progress-text" id="dlProgress"></div>
+    </div>
+  </div>
+
+</div><!-- /panel-left -->
+
+<!-- ── RIGHT PANEL ── -->
+<div class="panel-right">
+  <div class="preview-header">
+    <div class="preview-title">Live Preview — <span id="formatLabel">1080×1080px</span> output</div>
+    <div class="preview-controls">
+      <div class="col-switcher">
+        <span class="col-lbl">Size</span>
+        <button class="col-btn active" data-fmt="square" style="width:auto;padding:0 8px" onclick="setFormat('square')">1:1</button>
+        <button class="col-btn" data-fmt="portrait" style="width:auto;padding:0 8px" onclick="setFormat('portrait')">4:5</button>
+      </div>
+      <div class="col-switcher">
+        <span class="col-lbl">View</span>
+        <button class="col-btn active" data-cols="1" onclick="setCols(1)">1</button>
+        <button class="col-btn" data-cols="2" onclick="setCols(2)">2</button>
+        <button class="col-btn" data-cols="3" onclick="setCols(3)">3</button>
+      </div>
+      <div class="slide-count-badge" id="slideCountBadge">8 slides</div>
+    </div>
+  </div>
+  <div class="slides-preview cols-1" id="slidesPreview"></div>
+</div>
+
+</div><!-- /app -->
+
+<!-- ── RENDER AREA (hidden, full 540px) ── -->
+<div id="renderArea" style="position:fixed;left:-9999px;top:0;pointer-events:none;z-index:-1;visibility:hidden"></div>
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── PROMPT GUIDE MODAL ── -->
+<div class="modal-overlay" id="guideModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">How to use this tool with Claude</div>
+      <button class="modal-close" onclick="closeGuide()">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="guide-section">
+        <h3>What this tool does</h3>
+        <p>This is a free, local carousel builder. You paste slide content, pick a theme, customise each slide, and download 1080×1080px PNGs ready to upload to Instagram, LinkedIn, or any platform. No account needed. No data leaves your device.</p>
+      </div>
+
+      <div class="guide-section">
+        <h3>The exact format to ask Claude for</h3>
+        <p>Ask Claude to write your carousel and tell it to use this format exactly:</p>
+        <div class="code-block" id="formatBlock">Give me a carousel in this exact format:
+
+SLIDE 1: [cover headline] | [one line of subtext]
+SLIDE 2: [LABEL IN CAPS] | [Heading text] | [Body text 1-2 sentences]
+SLIDE 3: [LABEL IN CAPS] | [Heading text] | [Body text]
+...continue for each slide...
+SLIDE [N]: Find your people. | [your website or CTA]
+
+Rules:
+- Use | to separate label, heading, body
+- Slide 1 is always the cover (headline + subtext only)
+- Last slide is always the CTA
+- Keep headings under 8 words
+- Keep body text under 30 words
+- Also write an Instagram caption below the slides
+<button class="copy-code-btn" onclick="copyCode('formatBlock')">Copy</button></div>
+      </div>
+
+      <div class="guide-section">
+        <h3>Example prompt for a craft breakdown carousel</h3>
+        <div class="code-block" id="exBlock">I'm making an Instagram carousel for [YOUR BRAND].
+Audience: [describe your audience].
+Topic: [your topic]
+Pillar: Craft Breakdown (step-by-step technique)
+
+Give me 8 slides in this format:
+SLIDE 1: [hook headline] | [one subtext line]
+SLIDE 2: [LABEL] | [Heading] | [Body]
+SLIDE 3: [LABEL] | [Heading] | [Body]
+SLIDE 4: [LABEL] | [Heading] | [Body]
+SLIDE 5: [LABEL] | [Heading] | [Body]
+SLIDE 6: [LABEL] | [Heading] | [Body]
+SLIDE 7: [LABEL] | [Heading] | [Body]
+SLIDE 8: Find your people. | [website]
+
+Then write an Instagram caption:
+- Line 1: main keyword + sharpest version of the point
+- 2-3 sentences of value
+- One question to drive comments
+- Hashtags (5 max, specific)
+<button class="copy-code-btn" onclick="copyCode('exBlock')">Copy</button></div>
+      </div>
+
+      <div class="guide-section">
+        <h3>Content pillars you can ask Claude for</h3>
+        <div>
+          <span class="guide-tag">Craft Breakdown</span>
+          <span class="guide-tag">Industry Pulse</span>
+          <span class="guide-tag">Filmmaker Spotlight</span>
+          <span class="guide-tag">Honest Process</span>
+          <span class="guide-tag">Educational Framework</span>
+          <span class="guide-tag">Tools & Resources</span>
+          <span class="guide-tag">Community Question</span>
+        </div>
+        <p style="margin-top:10px">Tell Claude which pillar you want. Each has a different structure. Claude will write the slides to fit that structure.</p>
+      </div>
+
+      <div class="guide-section">
+        <h3>Pro tips for better slides</h3>
+        <ul class="tip-list">
+          <li><strong>Headings with line breaks:</strong> Use \n in the heading field to break across lines (e.g. "First line\nSecond line")</li>
+          <li><strong>Background images:</strong> Upload a photo per slide. The theme text renders on top. Good for location-based content.</li>
+          <li><strong>Text alignment:</strong> Switch between Left, Centre, Right per slide in the editor.</li>
+          <li><strong>Custom accent colour:</strong> Pick any hex colour to match your brand identity.</li>
+          <li><strong>Download order:</strong> Use "Download as ZIP" — files are named 01.png, 02.png etc. Upload in that order.</li>
+          <li><strong>Font size:</strong> Adjust per slide if a heading is too long or too short for the space.</li>
+          <li><strong>Variable count:</strong> Making a Reel script card? Set count to 1. Making a long tutorial? Set to 15.</li>
+        </ul>
+      </div>
+
+      <div class="guide-section">
+        <h3>Open source — contribute</h3>
+        <p>This tool is free and open source. If you improve it — new themes, new layouts, export options, translation — submit a pull request on GitHub. Every contribution is welcome.</p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ─────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────
+let slideCount = 8;
+let currentTheme = 1;
+let customAccentColor = null; // overrides theme accent when set
+let slides = [];
+let bgImages = {}; // index -> dataURL
+let format = 'square'; // 'square' = 1080x1080, 'portrait' = 1080x1350 (4:5)
+const FORMATS = { square:{w:540,h:540}, portrait:{w:540,h:675} };
+function dims(){ return FORMATS[format] || FORMATS.square; }
+
+// init default slides
+function makeDefaultSlides(n){
+  const arr = [];
+  for(let i=0;i<n;i++){
+    if(i===0) arr.push({label:'COVER',heading:'Your headline\nhere.',sub:'Supporting subtext for the cover.',type:'cover',align:'left',fontSize:100});
+    else if(i===n-1) arr.push({label:'CTA',heading:'Find your\npeople.',sub:'cinegrok.in',type:'cta',align:'center',fontSize:100});
+    else arr.push({label:`SLIDE ${i+1}`,heading:`Slide ${i+1} heading.`,body:'Body text for this slide goes here.',type:'content',align:'left',fontSize:100});
+  }
+  return arr;
+}
+slides = makeDefaultSlides(slideCount);
+
+// ─────────────────────────────────────────
+// THEMES
+// ─────────────────────────────────────────
+// Spacing/leading tokens per theme give the Panchayat "breathing" rhythm.
+// coverLH/contentLH/ctaLH = heading leading; bodyLH = body leading;
+// labelMB/headMB = gap below the eyebrow/label and below the heading.
+const THEMES = {
+  1:{bg:'#0a0a0a',accent:'#f0a500',text:'#ffffff',dim:'#cccccc',headFont:"'Playfair Display',serif",bodyFont:"'DM Sans',sans-serif",monoFont:"'DM Sans',sans-serif",headSize:58,contentHeadSize:36,italic:true,decorType:'bignum',coverLH:1.06,contentLH:1.3,ctaLH:1.08,bodyLH:1.7,labelMB:26,headMB:26},
+  2:{bg:'#0e1520',accent:'#00d4ff',text:'#f0f4f8',dim:'#8ba4bc',headFont:"'Bebas Neue',sans-serif",bodyFont:"'IBM Plex Sans',sans-serif",monoFont:"'Space Mono',monospace",headSize:76,contentHeadSize:46,decorType:'topbar',coverLH:1.02,contentLH:1.1,ctaLH:1.0,bodyLH:1.7,labelMB:20,headMB:20},
+  3:{bg:'#0d1a10',accent:'#c9a84c',text:'#e8dfc8',dim:'#7a9a7e',headFont:"'Cormorant Garamond',serif",bodyFont:"'DM Sans',sans-serif",monoFont:"'DM Sans',sans-serif",headSize:58,contentHeadSize:34,italic:true,decorType:'circle',coverLH:1.1,contentLH:1.3,ctaLH:1.1,bodyLH:1.7,labelMB:22,headMB:22},
+  4:{bg:'#120404',accent:'#e02010',text:'#f5ede0',dim:'#9a7a6a',headFont:"'Anton',sans-serif",bodyFont:"'DM Sans',sans-serif",monoFont:"'DM Sans',sans-serif",headSize:72,contentHeadSize:46,decorType:'slash',coverLH:1.02,contentLH:1.1,ctaLH:1.0,bodyLH:1.7,labelMB:20,headMB:20},
+  5:{bg:'#1a1410',accent:'#c47a6a',text:'#e8c8b8',dim:'#a08070',headFont:"'Cormorant Garamond',serif",bodyFont:"'DM Sans',sans-serif",monoFont:"'DM Sans',sans-serif",headSize:52,contentHeadSize:32,italic:true,decorType:'hrule',coverLH:1.1,contentLH:1.3,ctaLH:1.1,bodyLH:1.7,labelMB:22,headMB:22},
+  6:{bg:'#050505',accent:'#d4f000',text:'#ffffff',dim:'#888888',headFont:"'Space Grotesk',sans-serif",bodyFont:"'Space Mono',monospace",monoFont:"'Space Mono',monospace",headSize:52,contentHeadSize:28,decorType:'bracket',coverLH:1.05,contentLH:1.2,ctaLH:1.05,bodyLH:1.7,labelMB:20,headMB:20},
+};
+function getAccent(th){ return customAccentColor || th.accent; }
+
+// ─────────────────────────────────────────
+// SLIDE COUNT
+// ─────────────────────────────────────────
+function adjustCount(delta){
+  const newVal = Math.min(20, Math.max(1, slideCount + delta));
+  setCount(newVal);
+}
+function setCount(n){
+  n = Math.min(20, Math.max(1, parseInt(n)||8));
+  slideCount = n;
+  document.getElementById('countVal').value = n;
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.toggle('active', parseInt(b.textContent)===n));
+  document.getElementById('slideCountBadge').textContent = `${n} slide${n!==1?'s':''}`;
+  document.getElementById('dlBtnLabel').textContent = `Download All ${n} Slides (PNG)`;
+
+  // Resize slides array — preserve existing, pad or trim
+  while(slides.length < n){
+    const idx = slides.length;
+    slides.splice(idx, 0, {label:`SLIDE ${idx+1}`,heading:`Slide ${idx+1}.`,body:'',type:'content',align:'left',fontSize:100});
+  }
+  // always keep last as CTA type
+  slides = slides.slice(0, n);
+  if(slides.length > 1) slides[slides.length-1].type = 'cta';
+  slides[0].type = 'cover';
+
+  renderAll();
+  buildEditor();
+}
+
+// ─────────────────────────────────────────
+// PARSE INPUT
+// ─────────────────────────────────────────
+function parseInput(){
+  const raw = document.getElementById('pasteInput').value.trim();
+  if(!raw){showToast('Nothing to parse.','error');return;}
+
+  const lines = raw.split('\n');
+  const parsed = [];
+
+  for(const line of lines){
+    const m = line.match(/^SLIDE\s*(\d+)\s*[:\-]?\s*(.*)/i);
+    if(!m) continue;
+    const num = parseInt(m[1]);
+    const parts = m[2].split('|').map(p=>p.trim());
+    const isFirst = num===1;
+    const isLast = num===slideCount || (parsed.length>0 && parts[0]==='Find your people.');
+
+    if(isFirst){
+      parsed.push({label:'COVER',heading:parts[0]||'Cover headline.',sub:parts[1]||'',type:'cover',align:'left',fontSize:100});
+    } else if(isLast || parts[0]==='Find your people.'){
+      parsed.push({label:'CTA',heading:parts[0]||'Find your people.',sub:parts[1]||'',type:'cta',align:'center',fontSize:100});
+    } else {
+      const hasLabel = parts.length >= 3;
+      parsed.push({
+        label: hasLabel ? parts[0] : `SLIDE ${num}`,
+        heading: hasLabel ? parts[1] : parts[0],
+        body: hasLabel ? parts[2] : (parts[1]||''),
+        type:'content',align:'left',fontSize:100
+      });
+    }
+  }
+
+  if(parsed.length === 0){showToast('Could not parse. Check format.','error');return;}
+
+  // Pad or trim to slideCount
+  while(parsed.length < slideCount){
+    const idx = parsed.length;
+    parsed.splice(parsed.length-1,0,{label:`SLIDE ${idx+1}`,heading:`Slide ${idx}.`,body:'',type:'content',align:'left',fontSize:100});
+  }
+  slides = parsed.slice(0, slideCount);
+  slides[0].type = 'cover';
+  slides[slides.length-1].type = 'cta';
+
+  // check for caption after slides
+  const rawLower = raw.toLowerCase();
+  const capIdx = rawLower.indexOf('caption:');
+  if(capIdx > -1){
+    document.getElementById('captionArea').value = raw.substring(capIdx+8).trim();
+  }
+
+  renderAll();
+  buildEditor();
+  showToast(`${slides.length} slides parsed ✓`,'success');
+}
+
+function clearAll(){
+  document.getElementById('pasteInput').value='';
+  slides = makeDefaultSlides(slideCount);
+  bgImages = {};
+  renderAll();
+  buildEditor();
+  showToast('Cleared.','');
+}
+
+// ─────────────────────────────────────────
+// THEME
+// ─────────────────────────────────────────
+function selectTheme(t){
+  currentTheme=t;
+  document.querySelectorAll('.theme-card').forEach(c=>c.classList.remove('active'));
+  document.querySelector(`[data-theme="${t}"]`).classList.add('active');
+  renderAll();
+}
+function setCustomAccent(val){
+  customAccentColor = val;
+  document.getElementById('accentHex').textContent = val;
+  renderAll();
+}
+
+// ─────────────────────────────────────────
+// EDITOR
+// ─────────────────────────────────────────
+function buildEditor(){
+  const ed = document.getElementById('slidesEditor');
+  ed.innerHTML='';
+  slides.forEach((s,i)=>{
+    const row=document.createElement('div');
+    row.className='slide-row';
+    row.id=`erow-${i}`;
+    const badge = i===0?'CVR':i===slides.length-1?'CTA':String(i+1).padStart(2,'0');
+    const preview=(s.heading||'').replace(/\n/g,' ').substring(0,35);
+    const bgThumb = bgImages[i] ? `<img class="bg-thumb" src="${bgImages[i]}">
+      <button class="bg-clear" onclick="clearBg(${i},event)">✕ Remove background</button>` : '';
+
+    row.innerHTML=`
+      <div class="slide-row-header" onclick="toggleRow(${i})">
+        <span class="slide-drag">⠿</span>
+        <span class="slide-num-badge">${badge}</span>
+        <span class="slide-row-preview">${preview}…</span>
+        <span class="slide-row-toggle" id="tog-${i}">▶</span>
+      </div>
+      <div class="slide-row-body" id="row-${i}">
+        ${s.type!=='cta'?`
+        <div>
+          <div class="field-label">Label / Eyebrow</div>
+          <input type="text" value="${esc(s.label||'')}" oninput="upd(${i},'label',this.value)">
+        </div>
+        <div>
+          <div class="field-label">Heading <span style="color:var(--dim);font-size:9px">use \\n for line breaks</span></div>
+          <input type="text" value="${esc((s.heading||'').replace(/\n/g,'\\n'))}" oninput="upd(${i},'heading',this.value.replace(/\\\\n/g,'\\n'))">
+        </div>
+        ${s.type==='cover'
+          ?`<div><div class="field-label">Subtext</div><textarea oninput="upd(${i},'sub',this.value)">${esc(s.sub||'')}</textarea></div>`
+          :s.type==='content'
+          ?`<div><div class="field-label">Body Text</div><textarea oninput="upd(${i},'body',this.value)">${esc(s.body||'')}</textarea></div>`
+          :''}
+        `:`
+        <div>
+          <div class="field-label">CTA Heading</div>
+          <input type="text" value="${esc((s.heading||'').replace(/\n/g,'\\n'))}" oninput="upd(${i},'heading',this.value.replace(/\\\\n/g,'\\n'))">
+        </div>
+        <div>
+          <div class="field-label">URL / Tagline</div>
+          <input type="text" value="${esc(s.sub||'')}" oninput="upd(${i},'sub',this.value)">
+        </div>
+        `}
+        <div class="slide-controls">
+          <div class="slide-ctrl">
+            <div class="field-label">Text Align</div>
+            <select class="ctrl-select" onchange="upd(${i},'align',this.value)">
+              <option value="left" ${s.align==='left'?'selected':''}>Left</option>
+              <option value="center" ${s.align==='center'?'selected':''}>Centre</option>
+              <option value="right" ${s.align==='right'?'selected':''}>Right</option>
+            </select>
+          </div>
+          <div class="slide-ctrl">
+            <div class="field-label">Type</div>
+            <select class="ctrl-select" onchange="upd(${i},'type',this.value)">
+              <option value="cover" ${s.type==='cover'?'selected':''}>Cover</option>
+              <option value="content" ${s.type==='content'?'selected':''}>Content</option>
+              <option value="cta" ${s.type==='cta'?'selected':''}>CTA</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Heading Size <span style="color:var(--dim);font-size:9px">auto-fit · fine-tune</span> <span id="fsLabel-${i}">${s.fontSize||100}%</span></div>
+          <div class="range-wrap">
+            <input type="range" min="50" max="150" value="${s.fontSize||100}" oninput="upd(${i},'fontSize',parseInt(this.value));document.getElementById('fsLabel-${i}').textContent=this.value+'%'">
+          </div>
+        </div>
+        <div>
+          <div class="field-label">Background Image</div>
+          <div class="bg-upload-area">
+            <input type="file" accept="image/*" onchange="handleBgUpload(${i},this)">
+            <div class="bg-upload-label">${bgImages[i]?'Change image':'<span>Click to upload</span> or drag & drop'}</div>
+            ${bgThumb}
+          </div>
+        </div>
+      </div>`;
+    ed.appendChild(row);
+  });
+}
+
+function toggleRow(i){
+  const body=document.getElementById(`row-${i}`);
+  const tog=document.getElementById(`tog-${i}`);
+  body.classList.toggle('open');
+  tog.classList.toggle('open');
+}
+function esc(s){return String(s).replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+function upd(i,field,val){slides[i][field]=val;renderSlide(i);updateEditorPreview(i);}
+function updateEditorPreview(i){
+  const p=document.querySelector(`#erow-${i} .slide-row-preview`);
+  if(p) p.textContent=(slides[i].heading||'').replace(/\n/g,' ').substring(0,35)+'…';
+}
+
+// ─────────────────────────────────────────
+// BG IMAGE UPLOAD
+// ─────────────────────────────────────────
+function handleBgUpload(i, input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    bgImages[i]=e.target.result;
+    renderSlide(i);
+    buildEditor(); // rebuild to show thumb
+    showToast(`Background set for slide ${i+1}`,'success');
+  };
+  reader.readAsDataURL(file);
+}
+function clearBg(i,e){
+  e.stopPropagation();
+  delete bgImages[i];
+  renderSlide(i);
+  buildEditor();
+}
+
+// ─────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────
+function renderAll(){
+  const preview=document.getElementById('slidesPreview');
+  // rebuild wrappers if count changed
+  const existing=preview.querySelectorAll('.slide-wrapper');
+  if(existing.length!==slides.length) preview.innerHTML='';
+  for(let i=0;i<slides.length;i++) renderSlide(i);
+}
+
+function renderSlide(i){
+  const s=slides[i];
+  const th={...THEMES[currentTheme]};
+  const acc=getAccent(th);
+  const preview=document.getElementById('slidesPreview');
+
+  let wrapper=document.getElementById(`sw-${i}`);
+  if(!wrapper){
+    wrapper=document.createElement('div');
+    wrapper.className='slide-wrapper';wrapper.id=`sw-${i}`;
+    const lbl=document.createElement('div');lbl.className='slide-label-outer';lbl.id=`sl-${i}`;
+    const cw=document.createElement('div');cw.className='slide-canvas-wrap';cw.onclick=()=>downloadSingle(i);
+    const ov=document.createElement('div');ov.className='slide-dl-overlay';ov.textContent='↓ Download PNG';
+    const sr=document.createElement('div');sr.id=`sr-${i}`;sr.className='slide-render';
+    cw.appendChild(sr);cw.appendChild(ov);
+    wrapper.appendChild(lbl);wrapper.appendChild(cw);
+    preview.appendChild(wrapper);
+  }
+
+  const lbl=document.getElementById(`sl-${i}`);
+  if(lbl) lbl.innerHTML=`<span>${i===0?'Cover':i===slides.length-1?'CTA':`Slide ${i+1}`}</span><span class="slide-label-num">${String(i+1).padStart(2,'0')}/${String(slides.length).padStart(2,'0')}</span>`;
+
+  const el=document.getElementById(`sr-${i}`);
+  if(!el) return;
+  const {w:W,h:H}=dims();
+  const pw=el.parentElement?el.parentElement.offsetWidth:260;
+  const scale=pw/W;
+  el.style.transform=`scale(${scale})`;
+  el.style.width=W+'px';el.style.height=H+'px';
+  if(el.parentElement){ el.parentElement.style.aspectRatio='auto'; el.parentElement.style.height=(H*scale)+'px'; }
+  el.innerHTML=buildSlideHTML(s,i,th,acc,bgImages[i]);
+}
+
+// ─────────────────────────────────────────
+// AUTO-FIT HEADING SIZE
+// Binary-search the largest font size whose wrapped text still fits the
+// heading box — short headings grow big and dominant, long ones shrink to fit.
+// ─────────────────────────────────────────
+let _measEl=null;
+function measureFitSize(linesHTML, fontFamily, fontWeight, lineHeight, boxW, boxH, minSize, maxSize){
+  if(!linesHTML || !String(linesHTML).trim()) return Math.round((minSize+maxSize)/2);
+  if(!_measEl){
+    _measEl=document.createElement('div');
+    document.body.appendChild(_measEl);
+  }
+  const el=_measEl;
+  // Fixed width + wrapping means width always fits — the only real constraint
+  // is height, so we binary-search the largest size whose wrapped text fits boxH.
+  el.style.cssText=`position:absolute;left:-99999px;top:0;visibility:hidden;box-sizing:border-box;padding:0;margin:0;display:block;width:${boxW}px;white-space:normal;overflow-wrap:anywhere;word-break:normal;font-family:${fontFamily};font-weight:${fontWeight};line-height:${lineHeight};`;
+  el.innerHTML=linesHTML;
+  let lo=minSize, hi=maxSize, best=minSize;
+  for(let k=0;k<18;k++){
+    const mid=(lo+hi)/2;
+    el.style.fontSize=mid+'px';
+    if(el.scrollHeight<=boxH){ best=mid; lo=mid; } else { hi=mid; }
+  }
+  return Math.floor(best);
+}
+
+// ─────────────────────────────────────────
+// BUILD SLIDE HTML
+// ─────────────────────────────────────────
+function buildSlideHTML(s, idx, th, acc, bgImg){
+  const total = slides.length;
+  const {w:W,h:H} = dims();
+  const slideNum = `${String(idx+1).padStart(2,'0')}/${String(total).padStart(2,'0')}`;
+  const aC=`color:${acc}`;
+  const tC=`color:${th.text}`;
+  const dC=`color:${th.dim}`;
+  const bgC=`background:${th.bg}`;
+  const align = s.align||'left';
+  const textAlign = `text-align:${align}`;
+  const flexAlign = align==='center'?'align-items:center':align==='right'?'align-items:flex-end':'align-items:flex-start';
+  const fsScale = (s.fontSize||100)/100;
+  // leading + block-gap tokens (fall back to sensible defaults for older themes)
+  const coverLH = th.coverLH||1.08, contentLH = th.contentLH||1.3, ctaLH = th.ctaLH||1.1;
+  const bodyLH = th.bodyLH||1.7, labelMB = th.labelMB||22, headMB = th.headMB||22;
+  const frame = `width:${W}px;height:${H}px`;
+
+  // bg image layer
+  const bgLayer = bgImg
+    ? `<div style="position:absolute;inset:0;background-image:url('${bgImg}');background-size:cover;background-position:center;z-index:0"></div>
+       <div style="position:absolute;inset:0;background:rgba(0,0,0,.52);z-index:1"></div>`
+    : '';
+
+  // decorations
+  let decor='';
+  if(!bgImg){
+    if(th.decorType==='topbar') decor=`<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,${acc},transparent);z-index:6"></div>`;
+    if(th.decorType==='slash') decor=`<div style="position:absolute;top:0;right:90px;width:3px;height:100%;background:linear-gradient(to bottom,${acc},transparent);opacity:.3;z-index:1;transform:skewX(-8deg)"></div>`;
+    if(th.decorType==='hrule') decor=`<div style="position:absolute;top:52px;left:52px;right:52px;height:1px;background:linear-gradient(90deg,${acc},transparent);opacity:.25;z-index:5"></div>`;
+    if(th.decorType==='bracket') decor=`<div style="position:absolute;top:36px;right:36px;width:44px;height:44px;border-top:2px solid ${acc};border-right:2px solid ${acc};opacity:.4;z-index:2"></div>`;
+    if(th.decorType==='circle') decor=`<div style="position:absolute;right:48px;top:48px;width:70px;height:70px;border:1px solid ${acc}22;border-radius:50%;z-index:1"></div>`;
+    // 'bignum' = large faded glyph/number in the corner, Panchayat-style editorial depth
+    if(th.decorType==='bignum'){
+      const glyph = s.type==='cover' ? (s.bgGlyph||'') : String(idx+1);
+      if(glyph) decor=`<div style="position:absolute;bottom:-40px;right:-10px;font-family:${th.headFont};font-style:italic;font-weight:900;font-size:240px;line-height:1;${aC};opacity:.05;z-index:1;pointer-events:none;user-select:none">${glyph}</div>`;
+    }
+  }
+
+  const grain=`<div style="position:absolute;inset:0;background-image:url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22n%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%224%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23n)%22 opacity=%220.04%22/%3E%3C/svg%3E');background-size:200px;pointer-events:none;z-index:11"></div>`;
+  const wm=`<div style="position:absolute;bottom:20px;left:22px;font-family:${th.monoFont};font-size:10px;letter-spacing:.18em;text-transform:uppercase;${aC};z-index:12;opacity:.55">CineGrok</div>`;
+  const sn=`<div style="position:absolute;top:20px;right:22px;font-family:${th.monoFont};font-size:10px;letter-spacing:.15em;${aC};z-index:12;opacity:.55">${slideNum}</div>`;
+
+  // Auto-fit: base size found by measurement, then scaled by the per-slide slider (default 100%).
+  const headBoxW = W - 104; // 52px horizontal padding each side
+  let autoMin, autoMax, autoBoxH, headWeight;
+  if(s.type==='cover'){ autoMin=Math.round(th.headSize*0.8); autoMax=Math.round(th.headSize*1.5); autoBoxH=H*0.52; headWeight=900; }
+  else if(s.type==='cta'){ autoMin=Math.round(th.headSize*0.75); autoMax=Math.round(th.headSize*1.35); autoBoxH=H*0.34; headWeight=900; }
+  else { autoMin=Math.round(th.contentHeadSize*0.85); autoMax=Math.round(th.contentHeadSize*1.8); autoBoxH=H*0.50; headWeight=700; }
+  const headLH = s.type==='cover'?coverLH:s.type==='cta'?ctaLH:contentLH;
+  const measureLines = (s.heading||'').split('\n').join('<br>');
+  const autoFit = measureFitSize(measureLines, th.headFont, headWeight, headLH, headBoxW, autoBoxH, autoMin, autoMax);
+  const headFontSize = Math.max(8, Math.round(autoFit*fsScale));
+
+  function headingHTML(text, accent, italic){
+    const lines=(text||'').split('\n');
+    return lines.map((l,li)=>
+      li===lines.length-1
+        ? `<span style="color:${accent}${italic?';font-style:italic':''}">${l}</span>`
+        : l
+    ).join('<br>');
+  }
+
+  if(s.type==='cover'){
+    return `<div style="${frame};${bgImg?'':bgC};position:relative;overflow:hidden">
+      ${bgLayer}${grain}${decor}${wm}
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:56px 52px;z-index:5;${flexAlign}">
+        <div style="font-size:9px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;${aC};margin-bottom:${labelMB}px;font-family:${th.bodyFont};${textAlign}">ADIRA × CineGrok</div>
+        <div style="font-family:${th.headFont};font-weight:900;font-size:${headFontSize}px;line-height:${coverLH};${tC};margin-bottom:${headMB}px;${textAlign}">${headingHTML(s.heading,acc,th.italic)}</div>
+        <div style="font-size:13px;font-weight:300;line-height:${bodyLH};${dC};max-width:360px;font-family:${th.bodyFont};${textAlign}">${s.sub||''}</div>
+      </div>
+    </div>`;
+  }
+
+  if(s.type==='cta'){
+    const ctaLines=(s.heading||'').split('\n').map((l,li)=>li===1?`<span style="color:${acc}${th.italic?';font-style:italic':''}">${l}</span>`:l).join('<br>');
+    return `<div style="${frame};${bgImg?'':bgC};position:relative;overflow:hidden">
+      ${bgLayer}${grain}${wm}
+      <div style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 40%,${acc}18 0%,transparent 65%);z-index:2"></div>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:52px;z-index:5">
+        <div style="width:48px;height:1px;background:${acc};margin:0 auto 28px;opacity:.6"></div>
+        <div style="font-family:${th.headFont};font-weight:900;font-size:${headFontSize}px;line-height:${ctaLH};${tC};margin-bottom:16px">${ctaLines}</div>
+        <div style="font-size:14px;font-weight:500;letter-spacing:.12em;${aC};font-family:${th.bodyFont};margin-bottom:6px">${s.sub||''}</div>
+        <div style="font-size:10px;font-weight:300;letter-spacing:.2em;text-transform:uppercase;${dC};font-family:${th.monoFont};margin-top:8px">— ADIRA, CineGrok</div>
+      </div>
+      <div style="position:absolute;bottom:20px;right:22px;font-family:${th.monoFont};font-size:10px;letter-spacing:.15em;${aC};z-index:12;opacity:.55">${slideNum}</div>
+    </div>`;
+  }
+
+  // content
+  const accentBar=`<div style="position:absolute;left:0;top:25%;height:50%;width:3px;background:${acc};opacity:.25;z-index:3"></div>`;
+  return `<div style="${frame};${bgImg?'':bgC};position:relative;overflow:hidden">
+    ${bgLayer}${grain}${decor}${accentBar}${wm}${sn}
+    <div style="position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:56px 52px 64px;z-index:5;${flexAlign}">
+      <div style="font-size:9px;font-weight:500;letter-spacing:.3em;text-transform:uppercase;${aC};margin-bottom:${labelMB}px;font-family:${th.bodyFont};${textAlign}">${s.label||''}</div>
+      <div style="font-family:${th.headFont};font-weight:700;font-size:${headFontSize}px;line-height:${contentLH};${tC};margin-bottom:${headMB}px;${textAlign}">${headingHTML(s.heading,acc,th.italic)}</div>
+      <div style="font-size:13px;font-weight:300;line-height:${bodyLH};${dC};max-width:390px;font-family:${th.bodyFont};${textAlign}">${s.body||''}</div>
+    </div>
+  </div>`;
+}
+
+// ─────────────────────────────────────────
+// COLUMNS
+// ─────────────────────────────────────────
+function setCols(n){
+  const p=document.getElementById('slidesPreview');
+  p.className=`slides-preview cols-${n}`;
+  document.querySelectorAll('.col-btn').forEach(b=>{ if(b.dataset.cols) b.classList.toggle('active',parseInt(b.dataset.cols)===n); });
+  setTimeout(renderAll,60);
+}
+function setFormat(f){
+  format = (f==='portrait')?'portrait':'square';
+  document.querySelectorAll('.col-btn[data-fmt]').forEach(b=>b.classList.toggle('active',b.dataset.fmt===format));
+  const {w,h}=dims();
+  document.getElementById('formatLabel').textContent=`${w*2}×${h*2}px`;
+  setTimeout(renderAll,40);
+}
+
+// ─────────────────────────────────────────
+// DOWNLOAD — SEQUENTIAL QUEUE (fixes order issue)
+// ─────────────────────────────────────────
+function renderSlideToCanvas(i){
+  return new Promise(resolve=>{
+    const s=slides[i];
+    const th={...THEMES[currentTheme]};
+    const acc=getAccent(th);
+    const {w:W,h:H}=dims();
+    const clone=document.createElement('div');
+    // visibility:visible overrides the hidden #renderArea — without it html2canvas captures a blank square
+    clone.style.cssText=`width:${W}px;height:${H}px;position:absolute;left:-9999px;top:0;visibility:visible;`;
+    clone.innerHTML=buildSlideHTML(s,i,th,acc,bgImages[i]);
+    document.getElementById('renderArea').appendChild(clone);
+
+    // wait for images AND web fonts — html2canvas falls back to a generic serif
+    // if Playfair/Cormorant/etc. aren't fully loaded at capture time
+    const imgs=clone.querySelectorAll('img');
+    const loads=Array.from(imgs).map(img=>new Promise(r=>{if(img.complete)r();else{img.onload=r;img.onerror=r;}}));
+    const fontReady=(document.fonts&&document.fonts.ready)?document.fonts.ready:Promise.resolve();
+    Promise.all([...loads,fontReady]).then(()=>{
+      html2canvas(clone,{scale:2,useCORS:true,allowTaint:true,backgroundColor:bgImages[i]?null:th.bg,logging:false})
+        .then(canvas=>{
+          document.getElementById('renderArea').removeChild(clone);
+          resolve(canvas);
+        })
+        .catch(()=>{document.getElementById('renderArea').removeChild(clone);resolve(null);});
+    });
+  });
+}
+
+async function downloadAll(){
+  const btn=document.getElementById('dlAllBtn');
+  btn.disabled=true;
+  const prog=document.getElementById('dlProgress');
+  const fill=document.getElementById('dlFill');
+  const n=slides.length;
+
+  for(let i=0;i<n;i++){
+    prog.textContent=`Rendering slide ${i+1} of ${n}…`;
+    fill.style.width=`${Math.round(((i)/n)*100)}%`;
+    await new Promise(r=>setTimeout(r,80));
+    const canvas=await renderSlideToCanvas(i);
+    if(canvas){
+      const a=document.createElement('a');
+      a.download=`slide-${String(i+1).padStart(2,'0')}.png`;
+      a.href=canvas.toDataURL('image/png');
+      a.click();
+      await new Promise(r=>setTimeout(r,350)); // stagger so browser doesn't drop files
+    }
+  }
+  fill.style.width='100%';
+  prog.textContent=`✓ All ${n} slides downloaded in order.`;
+  btn.disabled=false;
+  setTimeout(()=>{prog.textContent='';fill.style.width='0%';},4000);
+  showToast(`${n} slides downloaded ✓`,'success');
+}
+
+async function downloadZip(){
+  if(typeof JSZip==='undefined'){showToast('JSZip not loaded.','error');return;}
+  const btn=document.getElementById('dlZipBtn');
+  btn.textContent='Building ZIP…';btn.disabled=true;
+  const prog=document.getElementById('dlProgress');
+  const fill=document.getElementById('dlFill');
+  const n=slides.length;
+  const zip=new JSZip();
+  const folder=zip.folder('carousel-slides');
+
+  for(let i=0;i<n;i++){
+    prog.textContent=`Rendering ${i+1}/${n} for ZIP…`;
+    fill.style.width=`${Math.round(((i+1)/n)*100)}%`;
+    const canvas=await renderSlideToCanvas(i);
+    if(canvas){
+      const dataUrl=canvas.toDataURL('image/png');
+      const base64=dataUrl.split(',')[1];
+      folder.file(`${String(i+1).padStart(2,'0')}-slide.png`,base64,{base64:true});
+    }
+    await new Promise(r=>setTimeout(r,60));
+  }
+
+  // add caption as txt
+  const caption=document.getElementById('captionArea').value;
+  if(caption.trim()) zip.file('caption.txt',caption);
+
+  zip.generateAsync({type:'blob'}).then(blob=>{
+    const a=document.createElement('a');
+    a.download='carousel-slides.zip';
+    a.href=URL.createObjectURL(blob);
+    a.click();
+    btn.textContent='⬇ Download as ZIP';btn.disabled=false;
+    prog.textContent=`✓ ZIP downloaded — ${n} slides in order.`;
+    fill.style.width='0%';
+    showToast('ZIP ready ✓','success');
+    setTimeout(()=>prog.textContent='',4000);
+  });
+}
+
+function downloadSingle(i){
+  showToast(`Rendering slide ${i+1}…`,'');
+  renderSlideToCanvas(i).then(canvas=>{
+    if(!canvas){showToast('Render failed.','error');return;}
+    const a=document.createElement('a');
+    a.download=`slide-${String(i+1).padStart(2,'0')}.png`;
+    a.href=canvas.toDataURL('image/png');
+    a.click();
+    showToast(`Slide ${i+1} downloaded ✓`,'success');
+  });
+}
+
+// ─────────────────────────────────────────
+// CAPTION
+// ─────────────────────────────────────────
+function copyCaption(){
+  const val=document.getElementById('captionArea').value;
+  if(!val){showToast('No caption to copy.','error');return;}
+  navigator.clipboard.writeText(val).then(()=>{
+    const btn=document.getElementById('copyCaptionBtn');
+    btn.textContent='✓ Copied!';btn.classList.add('copied');
+    showToast('Caption copied ✓','success');
+    setTimeout(()=>{btn.textContent='Copy Caption';btn.classList.remove('copied');},2500);
+  });
+}
+
+// ─────────────────────────────────────────
+// GUIDE MODAL
+// ─────────────────────────────────────────
+function openGuide(){document.getElementById('guideModal').classList.add('open')}
+function closeGuide(){document.getElementById('guideModal').classList.remove('open')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGuide();});
+document.getElementById('guideModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeGuide();});
+
+function copyCode(id){
+  const el=document.getElementById(id);
+  const text=el.innerText.replace('Copy','').trim();
+  navigator.clipboard.writeText(text).then(()=>showToast('Copied ✓','success'));
+}
+
+// ─────────────────────────────────────────
+// TOAST
+// ─────────────────────────────────────────
+let toastTimer;
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className=`toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className='toast',2800);
+}
+
+// ─────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────
+window.addEventListener('load',()=>{
+  renderAll();
+  buildEditor();
+  // re-measure once web fonts finish loading so auto-fit uses real font metrics
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>renderAll());
+  let rt;
+  window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(renderAll,150);});
+});
+</script>
+</body>
+</html>

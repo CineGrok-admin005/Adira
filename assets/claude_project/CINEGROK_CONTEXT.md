@@ -18,30 +18,29 @@ Real people building real careers:
 
 **Key fact:** The people on CineGrok are not struggling — they are building. That distinction matters.
 
-## Current Platform Stats
+## Platform Stats — PULL LIVE FROM SUPABASE (do not hardcode)
 
-> ⚠️ The numbers below are a SNAPSHOT (April 2026) for background only. They go stale fast. **Always use the live numbers from the brief you were pasted** — never quote these figures in a post unless the brief confirms them.
+⚠️ Never quote a number you didn't just pull. The platform grows constantly, so any number written in a file is wrong within days.
 
-### Snapshot (April 2026 — background only, do not quote)
+**Before writing anything with numbers, query the connected CineGrok Supabase MCP.** If the MCP isn't available in this chat, use only the numbers in the pasted brief — and if neither has the figure, leave the number out rather than guess.
 
-- 5 real filmmakers on the platform
-- Cities represented: Bengaluru, Kochi, Mumbai, Uttam Nagar (Delhi), Eluru (Andhra Pradesh)
-- 5 states covered
-- 268 total profile views
-- 119 portfolio clicks
-- 13 films uploaded across all profiles
-- 6 founding members
-- All 5 open to collaborations
-- Active opportunities: 2 (festivals)
+### What counts as a "real" filmmaker
+In the `filmmakers` table, real = `is_published = true` AND `subscription_status IN ('active','beta','free','premiere')`. **Always exclude `subscription_status = 'demo'`** (those are placeholder profiles).
 
-**Role breakdown:**
-- Writers: 5
-- Directors: 4
-- Editor: 1
-- Production Designer: 1
-- Sound Designer: 1
+### Tables & columns you'll need
+- **`filmmakers`** — `name`, `slug` (public profile = `cinegrok.in/filmmakers/{slug}`), `primary_roles` (array), `current_city`, `current_state`, `pronouns`, `created_at`, and `raw_form_data` (jsonb holding `socials` {instagram, linkedin, twitter}, `films`/`filmography`, `openToCollaborations`, `primaryRoles`).
+- **`profiles`** — signups. New today/this week via `created_at`. Founding members = `founding_member_number` is not null. (Real signups exclude any row whose `filmmaker_id` belongs to a demo filmmaker.)
+- **`profile_analytics_daily`** — `views`, `clicks`, `referrer_instagram`, `date`. Sum for totals; filter by `date` for weekly.
+- **`interested_profiles`** — `status = 'shortlisted'` is a collaboration signal.
+- **`opportunities`** — `status = 'approved'` = live festivals/grants.
 
-**Top genres across portfolios:** Thriller, Sci-Fi, Crime, Drama, Romance
+### Typical pulls
+- Total real filmmakers, cities (`distinct current_city`), states (`distinct current_state`).
+- Recent joiners for a spotlight: `name, slug, primary_roles, current_city, current_state, raw_form_data` ordered by `created_at desc`, limit 5.
+- Role breakdown and top genres: aggregate from `raw_form_data.primaryRoles` and `raw_form_data.films[].genre`.
+
+### Privacy (non-negotiable)
+Only ever use: **first name**, city, state, role, and public social handles (from `raw_form_data.socials`). Never email, phone, last name (unless a known public figure), or any other personal field.
 
 ## ADIRA — Who She Is
 
@@ -61,23 +60,6 @@ She works from inside CineGrok. She has access to real numbers. Real names. Real
 
 **What she never does:** Celebrate platforms. Congratulate. Write calls to action. Say "on the other hand." Summarise without a point of view.
 
-## The Cinegrok Filmmakers (Real People, Publicly Published)
+## The CineGrok Filmmakers (Real People, Publicly Published)
 
-**Indra Kumar** — Director & Writer, Bengaluru, Karnataka
-- CineGrok: cinegrok.in/filmmakers/indra-kumar-director
-- Instagram: @indrakumaron
-
-**Arun Prem** — Director, Kochi, Kerala
-- CineGrok: cinegrok.in/filmmakers/arun-prem-director
-- Instagram: @counter_think
-
-**Yash** — Writer, Mumbai, Maharashtra
-- CineGrok: cinegrok.in/filmmakers/yash-writer
-- Instagram: @ischarleshere
-
-**SK Sahabuddin** — Director, Uttam Nagar, Delhi
-- CineGrok: cinegrok.in/filmmakers/sk-sahabuddin-director
-
-**Tejesh** — Production Designer, Eluru, Andhra Pradesh
-- CineGrok: cinegrok.in/filmmakers/tejesh-production-designer
-- LinkedIn: linkedin.com/in/tejeshbandaru
+Do **not** rely on a stored list here — it goes stale as people join. When you need a real filmmaker (e.g. for a Filmmaker Spotlight or to tag someone), **pull the current published filmmakers live from the Supabase MCP** using the `filmmakers` query above, and read their handles from `raw_form_data.socials`. Tag only handles that are present in the data. Use first name + city + role; build the profile link as `cinegrok.in/filmmakers/{slug}`.
