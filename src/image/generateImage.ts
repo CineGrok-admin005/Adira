@@ -6,6 +6,18 @@ import type { EmotionState } from '../types';
 
 const AVATAR_PATH = path.resolve(process.cwd(), 'assets', 'adira-avatar.png');
 const SPACE_URL   = 'https://yanze-pulid-flux.hf.space/gradio_api';
+// FLUX.1-schnell (Apache-2.0, commercial-safe) for concept images (no ADIRA face).
+const FLUX_SCHNELL_URL = 'https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell';
+
+// Rotating cinematic looks for concept images — based on what performs on film/cinema
+// social (teal-orange grades, neon noir, golden hour, mono noir, painterly poster).
+const CONCEPT_STYLES: Array<{ name: string; mod: string }> = [
+  { name: 'teal-orange blockbuster', mod: 'cinematic film still, teal and orange color grade, anamorphic lens flare, shallow depth of field, dramatic key light, 35mm, ultra detailed' },
+  { name: 'amber golden-hour',       mod: 'cinematic film still, warm amber golden-hour light, soft atmospheric haze, deep inky blacks, anamorphic, fine film grain, ultra detailed' },
+  { name: 'neon noir',               mod: 'cinematic film still, neon-lit noir, moody high contrast, rain-slick reflections, cyan and magenta glow, anamorphic bokeh, ultra detailed' },
+  { name: 'high-contrast mono',      mod: 'cinematic black and white film still, chiaroscuro lighting, deep shadows, 35mm grain, dramatic, ultra detailed' },
+  { name: 'painterly poster',        mod: 'painterly cinematic movie-poster art, rich brushwork, dramatic rim light, warm amber accents over near-black, highly detailed' },
+];
 
 function buildPuLIDPrompt(scene: string, style: string, emotion: EmotionState): { positive: string; negative: string } {
   const expressionMap: Record<EmotionState, string> = {
@@ -111,25 +123,55 @@ async function attemptGeneration(token: string, positive: string, negative: stri
   return Buffer.from(imgRes.data as ArrayBuffer);
 }
 
+// Concept image (no ADIRA) via FLUX.1-schnell — rotating cinematic style, returns PNG bytes.
+async function generateConceptImage(token: string, scene: string, mood: string): Promise<Buffer | null> {
+  const style = CONCEPT_STYLES[Math.floor(Math.random() * CONCEPT_STYLES.length)];
+  const prompt = `${scene}. ${style.mod}. Mood: ${mood}. Square 1:1 composition. No text, no words, no watermark, no logos, no captions.`;
+  console.log(`🖼️  Concept image — FLUX.1-schnell, style: ${style.name}`);
+  try {
+    const res = await axios.post(
+      FLUX_SCHNELL_URL,
+      { inputs: prompt, parameters: { width: 1024, height: 1024 } },
+      { headers: { Authorization: `Bearer ${token}`, Accept: 'image/png', 'Content-Type': 'application/json' }, responseType: 'arraybuffer', timeout: 120000 }
+    );
+    const buf = Buffer.from(res.data as ArrayBuffer);
+    if (buf.length < 2000) return null; // too small to be a real image (likely an error blob)
+    return buf;
+  } catch (err) {
+    console.warn('⚠️  FLUX.1-schnell concept image failed:', (err as Error).message);
+    return null;
+  }
+}
+
 export async function generateAdiraImage(prompt: string, style: string, emotion: EmotionState = 'thoughtful', speechBubble?: string): Promise<Buffer | null> {
   const token = process.env.HUGGINGFACE_API_KEY;
   if (!token) return null;
 
-  // Check if ADIRA should appear — if not, use pure FLUX (id_weight=0, concept image)
+  // Check if ADIRA should appear — if not, it's a concept image
   const adiraInImage = !/SHOULD ADIRA BE IN THIS\?\s*No/i.test(prompt);
-  const idWeight = adiraInImage ? 1 : 0;
 
-  // For concept images, use the scene/concept description directly without character prompts
+  const sceneMatch = prompt.match(/SCENE:\s*(.+)/i);
+  const moodMatch  = prompt.match(/MOOD:\s*(.+)/i);
+  const scene = sceneMatch?.[1]?.trim() ?? prompt.slice(0, 200);
+  const mood  = moodMatch?.[1]?.trim() ?? 'cinematic';
+
+  // CONCEPT IMAGE: FLUX.1-schnell first (much better than PuLID with id_weight=0).
+  if (!adiraInImage) {
+    const flux = await generateConceptImage(token, scene, mood);
+    if (flux) {
+      console.log('✅ Concept image generated (FLUX.1-schnell).');
+      return speechBubble ? addSpeechBubble(flux, speechBubble) : flux;
+    }
+    console.warn('⚠️  FLUX failed — falling back to PuLID concept image.');
+  }
+
+  // PuLID-FLUX path: ADIRA face (id_weight=1) or concept fallback (id_weight=0)
+  const idWeight = adiraInImage ? 1 : 0;
   let positive: string;
   let negative: string;
   if (adiraInImage) {
     ({ positive, negative } = buildPuLIDPrompt(prompt, style, emotion));
   } else {
-    // Extract scene from imagePrompt for concept image
-    const sceneMatch = prompt.match(/SCENE:\s*(.+)/i);
-    const moodMatch  = prompt.match(/MOOD:\s*(.+)/i);
-    const scene = sceneMatch?.[1]?.trim() ?? prompt.slice(0, 200);
-    const mood  = moodMatch?.[1]?.trim() ?? 'cinematic';
     const styleMap: Record<string, string> = {
       Cinematic: '2D animated illustration, graphic novel art style, flat cel-shading, bold outlines, Indian cinema poster aesthetic, NO people',
       Moody:     '2D animated illustration, graphic novel art style, moody dramatic, cel-shaded, bold outlines, NO people',
@@ -137,7 +179,6 @@ export async function generateAdiraImage(prompt: string, style: string, emotion:
     };
     positive = `${scene}, ${mood} mood, ${styleMap[style] ?? styleMap.Cinematic}, high quality, detailed, cinegrok film platform`;
     negative = '(photorealistic:1.3), photograph, realistic, text, watermark, ugly, blurry, deformed';
-    console.log(`🖼️  Concept image mode (no ADIRA) — scene: ${scene.slice(0, 60)}...`);
   }
 
   const MAX_ATTEMPTS = 3;

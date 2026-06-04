@@ -108,13 +108,11 @@ Hashtags (max 3): always #CineGrok + the specific show or person discussed + 1 h
 - You may use line breaks between thoughts for readability.
 Hashtags (2-3): #CineGrok + source channel + specific show or film name.
 
-[TWITTER]
-Under 240 characters. One punch. Something worth quoting. 2-4 hashtags:
-- Always include #CineGrok
-- Add 1-3 specific high-reach tags: person name (#ARRahman #SaiAbhyankkar), film or show title (#NukkadNaatak #Dhurandhar), platform (#NetflixIndia #HombaleFilms), or festival (#MAMI #IFFI)
-- Ask: what would someone search on Twitter to find this story? Use that.
-- Never use broad tags like #Bollywood or #Film alone — too crowded, no reach
-- Keep total post under 240 characters including hashtags
+[TWEET_BRIEF]
+Do NOT write a tweet. Write a short brief that the CineGrok Tweets project (Claude) will turn into the actual viral tweet. Keep it to these three lines:
+STORY: [what happened — one specific line, with the real name/number/title]
+WHY IT MATTERS: [what it changes for a filmmaker who hasn't had their break yet — one line]
+ANGLE: [the sharpest CineGrok take on it — the thing only we would say]
 
 [TONE]
 One word: e.g. Observational, Sharp, Warm, Poetic, Dry, Questioning
@@ -184,8 +182,8 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
 
   const indexMatch      = text.match(/\[SELECTED_STORY_INDEX\]\s*(\d+)/);
   const instagramMatch  = text.match(/\[INSTAGRAM\]\s*([\s\S]*?)(?=\[LINKEDIN\])/);
-  const linkedinMatch   = text.match(/\[LINKEDIN\]\s*([\s\S]*?)(?=\[TWITTER\])/);
-  const twitterMatch    = text.match(/\[TWITTER\]\s*([\s\S]*?)(?=\[TONE\])/);
+  const linkedinMatch   = text.match(/\[LINKEDIN\]\s*([\s\S]*?)(?=\[TWEET_BRIEF\])/);
+  const tweetBriefMatch = text.match(/\[TWEET_BRIEF\]\s*([\s\S]*?)(?=\[TONE\])/);
   const toneMatch        = text.match(/\[TONE\]\s*([\s\S]*?)(?=\[EMOTION\]|\[IMAGE_PROMPT\])/);
   const emotionMatch     = text.match(/\[EMOTION\]\s*(excited|thoughtful|reporting|serious|warm)/i);
   const imagePromptMatch    = text.match(/\[IMAGE_PROMPT\]\s*([\s\S]*?)(?=\[IMAGE_STYLE\])/);
@@ -206,9 +204,10 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   const linkedin  = addSigLi(linkedinBody);
-  const twitter   = addSig(stripTags(twitterMatch?.[1] ?? ''));
+  // Tweet brief = context for the Tweets Claude project (NOT a finished tweet). No signature.
+  const tweetBrief = (tweetBriefMatch?.[1] ?? '').replace(/\n{3,}/g, '\n\n').trim();
 
-  if (!instagramMatch?.[1] || !linkedinMatch?.[1] || !twitterMatch?.[1]) {
+  if (!instagramMatch?.[1] || !linkedinMatch?.[1]) {
     console.error('❌ generateCommentary: failed to parse posts from response');
     return null;
   }
@@ -232,7 +231,7 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
   return {
     instagram,
     linkedin,
-    twitter,
+    tweetBrief,
     sourceStory: {
       title: sourceStory.youtubeVideo.title,
       url: sourceStory.youtubeVideo.url,

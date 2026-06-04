@@ -70,7 +70,7 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
   // Message 2-4: one per platform (each independently copyable on mobile)
   await bot.sendMessage(chatId, `📸 <b>INSTAGRAM</b>\n\n${h(post.instagram)}`, { parse_mode: 'HTML' });
   await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(post.linkedin)}\n\n<i>💬 Tip: paste https://cinegrok.in as the FIRST COMMENT — not in the post — for max reach.</i>`,   { parse_mode: 'HTML' });
-  await bot.sendMessage(chatId, `🐦 <b>TWITTER / X</b>\n\n${h(post.twitter)}`, { parse_mode: 'HTML' });
+  await bot.sendMessage(chatId, `🐦 <b>TWEET BRIEF — paste into your Tweets Claude project</b>\n<i>Claude writes the actual tweet + a bonus viral one.</i>\n\n<code>${h(post.tweetBrief)}</code>`, { parse_mode: 'HTML' });
 
   // Message 5: image prompt or actual image
   if (post.imageBuffer) {

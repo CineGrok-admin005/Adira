@@ -8,7 +8,7 @@ import { generatePosts } from './claude/generatePosts';
 import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft } from './telegram/sendDraft';
 import { getIntroductionPosts } from './aria/introduce';
 import { fetchYouTubeVideos } from './news/fetchYouTube';
-import { fetchGoogleNews } from './news/fetchGoogleNews';
+import { fetchNews } from './news/fetchNewsData';
 import { crossVerify } from './news/crossVerify';
 import { generateCommentary } from './news/generateCommentary';
 import { generateAdiraImage } from './image/generateImage';
@@ -172,7 +172,7 @@ export async function runCommentaryAgent(): Promise<void> {
 
     const [videos, news] = await Promise.all([
       fetchYouTubeVideos(),
-      fetchGoogleNews(),
+      fetchNews(), // NewsData.io (server-friendly) + Google News RSS, deduped
     ]);
 
     console.log(`   YouTube: ${videos.length} video(s) | News: ${news.length} item(s)`);
@@ -267,9 +267,9 @@ export async function runCommentaryAgent(): Promise<void> {
     await sendCommentaryDraft(post);
 
     if (AUTO_POST) {
-      console.log('🚀 AUTO_POST=true — posting commentary to platforms...');
-      try { await postToTwitter(post.twitter); }
-      catch (err) { console.error('❌ Twitter:', err instanceof Error ? err.message : err); }
+      console.log('🚀 AUTO_POST=true — posting commentary to LinkedIn...');
+      // Twitter is intentionally NOT auto-posted: tweets are now written manually
+      // from the TWEET BRIEF via the Tweets Claude project (X API also costs money).
       try { await postToLinkedIn(post.linkedin, post.imageBuffer); }
       catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
     }
@@ -321,7 +321,7 @@ export async function preWarmType1(): Promise<void> {
 export async function preWarmType2(): Promise<void> {
   try {
     console.log('⏰ Pre-warming Type 2 image...');
-    const [videos, news] = await Promise.all([fetchYouTubeVideos(), fetchGoogleNews()]);
+    const [videos, news] = await Promise.all([fetchYouTubeVideos(), fetchNews()]);
     const stories = crossVerify(videos, news);
     if (stories.length === 0) { console.log('💤 No stories to pre-warm for.'); return; }
     const post = await generateCommentary(stories);

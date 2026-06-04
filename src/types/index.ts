@@ -92,7 +92,7 @@ export interface VerifiedStory {
 export interface CommentaryPost {
   instagram: string;
   linkedin: string;
-  twitter: string;
+  tweetBrief: string; // context for the Tweets Claude project — NOT a finished tweet
   sourceStory: {
     title: string;
     url: string;
