@@ -72,12 +72,15 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
   await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(post.linkedin)}\n\n<i>💬 Tip: paste https://cinegrok.in as the FIRST COMMENT — not in the post — for max reach.</i>`,   { parse_mode: 'HTML' });
   await bot.sendMessage(chatId, `🐦 <b>TWEET BRIEF — paste into your Tweets Claude project</b>\n<i>Claude writes the actual tweet + a bonus viral one.</i>\n\n<code>${h(post.tweetBrief)}</code>`, { parse_mode: 'HTML' });
 
-  // Message 5: image prompt or actual image
+  // Image (for the LinkedIn post). If it generated, send ONLY the image — no prompt.
+  // Send the prompt ONLY as a fallback when generation failed, so you can make one manually.
   if (post.imageBuffer) {
-    await bot.sendPhoto(chatId, post.imageBuffer, { caption: `🎨 <b>IMAGE PROMPT</b> — ${post.imageStyle}\n\n${h(post.imagePrompt)}`, parse_mode: 'HTML' });
+    await bot.sendPhoto(chatId, post.imageBuffer, { caption: `🎨 ADIRA image — ${post.imageStyle} (used on the LinkedIn post)`, parse_mode: 'HTML' });
   } else {
+    const adiraInImage = !/SHOULD ADIRA BE IN THIS\?\s*No/i.test(post.imagePrompt);
+    const lock = adiraInImage ? `\n\n${h(CHARACTER_LOCK)}` : '';
     await bot.sendMessage(chatId,
-      `🎨 <b>IMAGE PROMPT</b> — ${post.imageStyle}\n\nUpload adira-avatar.png to ChatGPT with this prompt:\n\n${h(post.imagePrompt)}\n\n${h(CHARACTER_LOCK)}`,
+      `🎨 <b>IMAGE PROMPT</b> (no image generated — make one for LinkedIn) — ${post.imageStyle}\n\n${h(post.imagePrompt)}${lock}`,
       { parse_mode: 'HTML' }
     );
   }
