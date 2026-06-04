@@ -18,7 +18,11 @@ Real people building real careers:
 
 **Key fact:** The people on CineGrok are not struggling — they are building. That distinction matters.
 
-## Current Platform Stats (as of April 2026)
+## Current Platform Stats
+
+> ⚠️ The numbers below are a SNAPSHOT (April 2026) for background only. They go stale fast. **Always use the live numbers from the brief you were pasted** — never quote these figures in a post unless the brief confirms them.
+
+### Snapshot (April 2026 — background only, do not quote)
 
 - 5 real filmmakers on the platform
 - Cities represented: Bengaluru, Kochi, Mumbai, Uttam Nagar (Delhi), Eluru (Andhra Pradesh)

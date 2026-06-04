@@ -15,11 +15,25 @@ export async function generateCommentary(stories: VerifiedStory[]): Promise<Comm
   const memory = await readMemory();
   const audience = getAudienceMode();
 
+  const clean = (t: string) => (t || '').replace(/\s+/g, ' ').trim();
+
   const storyList = stories
     .slice(0, 8)
     .map((s, i) => {
-      const sources = s.matchingNews.map(n => n.source).filter(Boolean).join(', ');
-      return `[${i + 1}] ${s.youtubeVideo.channelTitle} (YouTube):\n"${s.youtubeVideo.title}"\n${s.youtubeVideo.url}\nAlso covered by: ${sources || 'Indian press'}`;
+      const v = s.youtubeVideo;
+      const desc = clean(v.description).slice(0, 300);
+      const coverage = s.matchingNews
+        .slice(0, 3)
+        .map(n => {
+          const nd = clean(n.description).slice(0, 200);
+          return `   • ${n.source || 'Press'}: "${clean(n.title)}"${nd ? ` — ${nd}` : ''}`;
+        })
+        .join('\n');
+      return `[${i + 1}] ${v.channelTitle} (YouTube): "${clean(v.title)}"
+URL: ${v.url}
+What the video itself says: ${desc || '(no description available)'}
+Press coverage of the same story:
+${coverage || '   • (no additional press detail)'}`;
     })
     .join('\n\n');
 
@@ -38,6 +52,9 @@ ${memory.instagram.length > 0 || memory.linkedin.length > 0 || memory.twitter.le
 
 ${storyList}
 
+## GROUNDING — THE MOST IMPORTANT RULE
+Every concrete claim you write must come from the verified story you pick above — its title, "what the video itself says", or its press coverage. Never introduce a number, a slate, an announcement, a name, or an event that is not in that story. Do not reuse facts from the examples further down (they show tone only). If the story you picked does not give you enough specific detail to say something true and worth reading, write "NO_WORTHWHILE_STORY" instead of padding it with generic claims.
+
 ## SKIP THIS STORY IF:
 - It is a music release, song launch, or promotional trailer
 - It is a celebrity appearance, award show recap, or gossip
@@ -48,23 +65,24 @@ ${storyList}
 
 Find the one story where you can say something specific to the person who is three steps behind the people in the headline. Not "here's what happened." Not "here's the lesson." The specific thing this unlocks, or closes, or proves.
 
-## WHAT ADIRA SOUNDS LIKE — study these before writing
+## WHAT ADIRA SOUNDS LIKE — study the SHAPE, never copy the facts
+⚠️ These examples illustrate TONE and STRUCTURE only. They are NOT today's story. Never reuse their facts, names, numbers, or events. Fill the shape with details from the story you actually picked above.
 
 BAD (do not write like this):
 "A powerful OST can make all the difference in a film. For emerging filmmakers, it's a reminder to pay attention to every detail of the cinematic experience."
-→ This is a blog post. Generic. No point of view. Could have been written by anyone about anything.
+→ A blog post. Generic. No point of view. Could have been written by anyone about anything.
 
-GOOD (write like this):
-"Ajaneesh Loknath scored KGF when nobody knew his name. Hombale trusted him anyway. Now his name is on every poster. The question for everyone building their reel on CineGrok right now: are you putting yourself where that trust can find you? 🎬 #CineGrok #HombaleFilms #IndianCinema"
-→ Specific. Asks a real question. Makes the reader feel something.
+GOOD shape (write like this — but with TODAY'S facts):
+"[Specific person] did [specific thing] before anyone knew their name. [Who backed them] trusted them anyway. The question for everyone building their reel on CineGrok right now: are you putting yourself where that trust can find you? 🎬 #CineGrok #[SpecificName] #[SpecificTopic]"
+→ Specific. Names a real person/event from the story. Asks a real question. Makes the reader feel something.
 
 BAD:
 "The Indian film industry is evolving. Emerging filmmakers should take note of these changes and adapt their strategies accordingly."
 → Empty. Says nothing.
 
-GOOD:
-"Netflix India just committed to 40 Indian originals. That is 40 directors who will get their first real budget this year. One of them could be building their portfolio on CineGrok right now. The door is open. The question is who walks through it. #CineGrok #NetflixIndia"
-→ Concrete number. Real stakes. Speaks directly to the person reading.
+GOOD shape:
+"[The concrete thing that happened in today's story, with its real number or name]. That changes [the specific thing it unlocks or closes] for [who]. The question is [the real question it raises for someone still becoming]. #CineGrok #[SpecificName]"
+→ Concrete detail from the story. Real stakes. Speaks directly to the person reading.
 
 ## YOUR TASK
 
@@ -82,7 +100,12 @@ The number of the story you picked (e.g. 3)
 Hashtags (max 3): always #CineGrok + the specific show or person discussed + 1 hyper-specific topic. No generic hashtags. Remove spaces, capitalise each word.
 
 [LINKEDIN]
-3-4 sentences. Each sentence should do different work — don't restate the same point. Connect to what this means for someone at the start of their career.
+3-4 sentences, written for the LinkedIn feed. Each sentence does different work — don't restate the same point.
+- First line must land on its own before the "see more" fold (~210 chars): lead with the sharpest specific fact from the story, no preamble.
+- Connect it to what this changes for someone at the start of their career.
+- Do NOT put any link or URL in the text — LinkedIn suppresses posts that link out. The link goes in the first comment.
+- Close with one genuine, specific question that invites a real reply — never the generic "who will walk through it" / "who's ready" line.
+- You may use line breaks between thoughts for readability.
 Hashtags (2-3): #CineGrok + source channel + specific show or film name.
 
 [TWITTER]
@@ -170,11 +193,20 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
   const instagramBriefMatch = text.match(/\[INSTAGRAM_BRIEF\]\s*([\s\S]*?)$/);
 
   const SIG = '\n\nhttps://cinegrok.in\n— ADIRA, CineGrok';
+  const SIG_LI = '\n\n— ADIRA, CineGrok'; // LinkedIn down-ranks outbound links — link goes in first comment, not the body
+  // Strip stray bracket labels the model sometimes leaks (e.g. [LINKEDIN_HASHTAGS])
+  const stripTags = (t: string) => (t ?? '').replace(/\[[A-Z][A-Z_ ]*\]/g, '').replace(/\n{3,}/g, '\n\n').trim();
   const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
+  const addSigLi = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG_LI;
 
-  const instagram = addSig(instagramMatch?.[1]?.trim() ?? '');
-  const linkedin  = addSig(linkedinMatch?.[1]?.trim()  ?? '');
-  const twitter   = addSig(twitterMatch?.[1]?.trim()   ?? '');
+  const instagram = addSig(stripTags(instagramMatch?.[1] ?? ''));
+  // Remove any cinegrok.in URL the model may have written into the LinkedIn body
+  const linkedinBody = stripTags(linkedinMatch?.[1] ?? '')
+    .replace(/https?:\/\/(www\.)?cinegrok\.in\/?\S*/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  const linkedin  = addSigLi(linkedinBody);
+  const twitter   = addSig(stripTags(twitterMatch?.[1] ?? ''));
 
   if (!instagramMatch?.[1] || !linkedinMatch?.[1] || !twitterMatch?.[1]) {
     console.error('❌ generateCommentary: failed to parse posts from response');

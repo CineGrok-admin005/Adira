@@ -5,7 +5,8 @@ import { fetchGrowthData, fetchDemoFilterDiagnostic } from './supabase/queries';
 import { sanitizeForPublic } from './privacy/sanitize';
 import type { MilestoneEvent, VerifiedStory } from './types';
 import { generatePosts } from './claude/generatePosts';
-import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft } from './telegram/sendDraft';
+import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft, sendFounderDraft } from './telegram/sendDraft';
+import { generateFounderPost } from './founder/generateFounderPost';
 import { getIntroductionPosts } from './aria/introduce';
 import { fetchYouTubeVideos } from './news/fetchYouTube';
 import { fetchGoogleNews } from './news/fetchGoogleNews';
@@ -335,12 +336,31 @@ export async function preWarmType2(): Promise<void> {
   } catch (err) { console.error('❌ Pre-warm Type 2 failed:', (err as Error).message); }
 }
 
+// Type 3 — Sivaji founder post. Always manual/review (no AUTO_POST): the founder
+// edits and posts these himself. Cadence (every ~2 days) is set by the cron schedule.
+export async function runFounderAgent(): Promise<void> {
+  try {
+    console.log('🧑‍💼 Type 3 — Generating Sivaji founder post...');
+    const post = await generateFounderPost();
+    if (!post) {
+      console.log('💤 No founder post generated this run.');
+      return;
+    }
+    console.log('📱 Sending founder draft to Telegram...');
+    await sendFounderDraft(post);
+    console.log('✅ Type 3 founder post completed!');
+  } catch (error) {
+    console.error('❌ Founder Agent error:', error);
+  }
+}
+
 const isTestRun        = process.argv.includes('--test');
 const isDryRun         = process.argv.includes('--dry-run');
 const isIntroduce      = process.argv.includes('--introduce');
 const isCommentaryTest = process.argv.includes('--commentary');
 const isRunGrowth      = process.argv.includes('--run-growth');      // GitHub Actions trigger
 const isRunCommentary  = process.argv.includes('--run-commentary');   // GitHub Actions trigger
+const isRunFounder     = process.argv.includes('--run-founder');      // GitHub Actions trigger (every ~2 days)
 const isPreWarm1       = process.argv.includes('--prewarm-growth');
 const isPreWarm2       = process.argv.includes('--prewarm-commentary');
 
@@ -360,6 +380,9 @@ if (isIntroduce) {
 } else if (isRunCommentary) {
   // Called by GitHub Actions at 1 PM and 7 PM IST — runs once and exits
   runCommentaryAgent();
+} else if (isRunFounder) {
+  // Called every ~2 days — generates a Sivaji founder draft for manual posting
+  runFounderAgent();
 } else if (isPreWarm1) {
   preWarmType1();
 } else if (isPreWarm2) {

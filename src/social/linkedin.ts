@@ -89,7 +89,7 @@ export async function postToLinkedIn(text: string, imageBuffer?: Buffer): Promis
       ];
     }
 
-    await axios.post(
+    const postRes = await axios.post(
       'https://api.linkedin.com/v2/ugcPosts',
       {
         author: `urn:li:person:${personId}`,
@@ -104,6 +104,27 @@ export async function postToLinkedIn(text: string, imageBuffer?: Buffer): Promis
       { headers }
     );
     console.log('✅ Posted to LinkedIn (personal profile: Sivaji Raja)');
+
+    // Drop the cinegrok.in link in the FIRST COMMENT, not the post body —
+    // LinkedIn down-ranks posts with outbound links in the body. Non-fatal if it fails.
+    const postUrn: string | undefined =
+      (postRes.headers['x-restli-id'] as string) || postRes.data?.id;
+    if (postUrn) {
+      try {
+        await axios.post(
+          `https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postUrn)}/comments`,
+          {
+            actor: `urn:li:person:${personId}`,
+            message: { text: 'More at https://cinegrok.in' },
+          },
+          { headers }
+        );
+        console.log('💬 Added cinegrok.in as the first comment.');
+      } catch (commentErr) {
+        const ce = commentErr as AxiosError;
+        console.warn('⚠️  Could not add first comment (post still published):', ce.message);
+      }
+    }
   } catch (err: unknown) {
     const axiosErr = err as AxiosError;
     if (axiosErr.response?.status === 401) {

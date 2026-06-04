@@ -167,7 +167,7 @@ https://cinegrok.in
 
 ## OUTPUT FORMAT
 
-Output TWO things:
+Output THREE things:
 
 ### Part 1 — Slide text + caption (plain text)
 ```
@@ -180,7 +180,20 @@ CAPTION: [full caption]
 HASHTAGS: #CineGrok [+ 2-4 more]
 ```
 
-### Part 2 — Complete self-contained HTML file
+### Part 2 — Twitter / X post (plain text)
+
+A matching post for Twitter/X in ADIRA's voice, covering the same story. This is posted manually.
+```
+TWITTER: [the post]
+```
+Rules:
+- Under 240 characters total, including hashtags.
+- One punch. Something worth quoting. No filler. Not a summary of the carousel.
+- 2-4 specific high-reach hashtags: always `#CineGrok` + 1-3 specific tags — a person name (`#ARRahman`), a film/show title (`#Dhurandhar`), a platform (`#NetflixIndia #HombaleFilms`), or a festival (`#MAMI #IFFI`). Ask: what would someone search on Twitter to find this story? Use that.
+- Never broad tags like `#Bollywood` or `#Film` alone — too crowded, no reach.
+- End with `https://cinegrok.in` then `— ADIRA, CineGrok` (Twitter does not penalise links).
+
+### Part 3 — Complete self-contained HTML file
 
 After the slide text, output a complete HTML file the user can open in any browser and download each slide as a PNG image with one click per slide.
 
@@ -191,11 +204,18 @@ After the slide text, output a complete HTML file the user can open in any brows
 - Text colour: `#ffffff` (white) for body, `#cccccc` for secondary text
 - Font: `'Georgia', serif` for quotes/hero text. `'Arial', sans-serif` for body.
 - Each slide is a separate section on the page, visually separated
+- **ADIRA's face (brand recognition — the "mix"):** load her portrait from this URL and embed it on the cover and closing slides:
+  `https://raw.githubusercontent.com/CineGrok-admin005/Adira/main/assets/adira-avatar.png`
+  Set `crossorigin="anonymous"` on the `<img>` so html2canvas can capture it.
+  - Slide 1 (cover): a small circular ADIRA portrait (≈140px, amber 2px ring) in the bottom-left **above** the wordmark, with `ADIRA` in amber + `CineGrok Reporter` in `#cccccc` beside it. The hero text stays the focus.
+  - Slide 8 (CTA): a larger circular ADIRA portrait (≈220px, amber ring) centred above the CTA text.
+  - Slides 2–7: NO portrait — keep content slides clean (text + wordmark only).
 - Slide 1 (cover): large hero text centred, amber accent on the key word or phrase
 - Slides 2–7 (content): left-aligned, generous line spacing, one idea per slide, slide number in top-right corner in amber
-- Slide 8 (CTA): centred, "Find your people." in white, `cinegrok.in` in amber, "— ADIRA, CineGrok" below
+- Slide 8 (CTA): centred, ADIRA portrait on top, then "Find your people." in white, `cinegrok.in` in amber, "— ADIRA, CineGrok" below
 - Small CineGrok wordmark in bottom-left corner of every slide (text-based: "CineGrok" in amber, small)
 - Download button below each slide: `Download Slide X`
+- Because the portrait is loaded cross-origin, pass `{scale: 2, useCORS: true, allowTaint: false}` to `html2canvas`.
 
 **Use html2canvas for PNG download:**
 ```html
@@ -205,7 +225,7 @@ After the slide text, output a complete HTML file the user can open in any brows
 Download function:
 ```javascript
 function downloadSlide(slideId, filename) {
-  html2canvas(document.getElementById(slideId), {scale: 2}).then(canvas => {
+  html2canvas(document.getElementById(slideId), {scale: 2, useCORS: true, allowTaint: false}).then(canvas => {
     const link = document.createElement('a');
     link.download = filename;
     link.href = canvas.toDataURL('image/png');

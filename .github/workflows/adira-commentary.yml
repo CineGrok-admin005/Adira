@@ -1,12 +1,11 @@
 name: ADIRA — Commentary Posts (1 PM + 7 PM IST)
 
+# Triggered on time by an external cron service (cron-job.org) via the
+# workflow_dispatch REST API — once at 1 PM IST and once at 7 PM IST.
+# GitHub's own `schedule:` cron was removed because it fires hours late on the
+# free tier (and would double-post alongside the external trigger).
 on:
-  schedule:
-    # 1:00 PM IST = 7:30 AM UTC
-    - cron: '30 7 * * *'
-    # 7:00 PM IST = 1:30 PM UTC
-    - cron: '30 13 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # external cron + manual trigger from GitHub UI
 
 jobs:
   run:

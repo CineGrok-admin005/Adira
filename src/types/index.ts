@@ -107,6 +107,20 @@ export interface CommentaryPost {
   instagramBrief?: string;
 }
 
+export type FounderTopic =
+  | 'BUILD_IN_PUBLIC'
+  | 'FILMMAKER_STORY'
+  | 'INDUSTRY_TAKE'
+  | 'MILESTONES';
+
+export interface FounderPost {
+  topic: FounderTopic;
+  linkedin: string;
+  twitter: string;
+  instagram: string;
+  claudeBrief: string; // self-contained block to paste into the Claude.ai founder project
+}
+
 export interface MilestoneEvent {
   hasMilestone: boolean;
   type:

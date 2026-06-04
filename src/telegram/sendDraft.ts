@@ -1,5 +1,5 @@
 import { bot } from './bot';
-import { GeneratedPosts, CommentaryPost } from '../types';
+import { GeneratedPosts, CommentaryPost, FounderPost } from '../types';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -69,7 +69,7 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
 
   // Message 2-4: one per platform (each independently copyable on mobile)
   await bot.sendMessage(chatId, `📸 <b>INSTAGRAM</b>\n\n${h(post.instagram)}`, { parse_mode: 'HTML' });
-  await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(post.linkedin)}`,   { parse_mode: 'HTML' });
+  await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(post.linkedin)}\n\n<i>💬 Tip: paste https://cinegrok.in as the FIRST COMMENT — not in the post — for max reach.</i>`,   { parse_mode: 'HTML' });
   await bot.sendMessage(chatId, `🐦 <b>TWITTER / X</b>\n\n${h(post.twitter)}`, { parse_mode: 'HTML' });
 
   // Message 5: image prompt or actual image
@@ -87,6 +87,34 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
   }
 
   console.log('✅ Commentary draft sent to Telegram');
+}
+
+const FOUNDER_TOPIC_LABEL: Record<string, string> = {
+  BUILD_IN_PUBLIC: '🛠️ Build in public',
+  FILMMAKER_STORY: '🎬 Filmmaker story',
+  INDUSTRY_TAKE:   '🗞️ Industry take',
+  MILESTONES:      '📈 Milestones & numbers',
+};
+
+export async function sendFounderDraft(post: FounderPost): Promise<void> {
+  const chatId = process.env.TELEGRAM_CHAT_ID!;
+  const time = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  const topic = FOUNDER_TOPIC_LABEL[post.topic] ?? post.topic;
+  const html = { parse_mode: 'HTML' as const };
+
+  await bot.sendMessage(chatId,
+    `🧑‍💼 <b>SIVAJI — Founder Post</b>\n<i>Your voice, posted by you | ${topic} | ${time}</i>\n<i>Review, tweak, and post manually.</i>`,
+    html);
+
+  // One message per platform — each independently copyable on mobile
+  await bot.sendMessage(chatId, `💼 <b>LINKEDIN (personal)</b>\n\n${h(post.linkedin)}\n\n<i>💬 Tip: paste https://cinegrok.in as the FIRST COMMENT — not in the post — for max reach.</i>`, html);
+  await bot.sendMessage(chatId, `🐦 <b>TWITTER / X</b>\n\n${h(post.twitter)}`, html);
+  await bot.sendMessage(chatId, `📸 <b>INSTAGRAM</b>\n\n${h(post.instagram)}`, html);
+
+  // Premium path — paste into the Sivaji Claude project for a sharper version
+  await bot.sendMessage(chatId, `✨ <b>WANT THE PREMIUM VERSION?</b>\nPaste this into your Sivaji Claude project:\n\n<code>${h(post.claudeBrief)}</code>`, html);
+
+  console.log('✅ Founder draft sent to Telegram');
 }
 
 export async function sendIntroductionToFounder(posts: GeneratedPosts): Promise<void> {
