@@ -19,6 +19,24 @@ import { postToLinkedIn, checkLinkedInTokenExpiry } from './social/linkedin';
 
 const AUTO_POST = process.env.AUTO_POST === 'true';
 
+// Milestones that are only true "today" — never re-queue them (they'd resurface stale).
+const DATE_SENSITIVE_MILESTONES = new Set(['DAILY_UPDATE', 'FIRST_NEW_CITY', 'FIRST_FEMALE', 'WEEKLY_SUMMARY']);
+
+// Stable per-milestone signature so the same event never posts twice across days.
+function milestoneSignature(m: MilestoneEvent): string {
+  const d = m.data;
+  switch (m.type) {
+    case 'COUNT_MILESTONE': return `COUNT_${d.milestoneHit}`;
+    case 'VIEW_MILESTONE':  return `VIEW_${m.message}`;
+    case 'CITY_MILESTONE':  return `CITY_${d.uniqueCities}`;
+    case 'FIRST_FEMALE':    return `FIRST_FEMALE_${d.firstFemaleFilmmaker?.firstName ?? ''}_${d.firstFemaleFilmmaker?.city ?? ''}`;
+    case 'FIRST_NEW_CITY':  return `FIRST_NEW_CITY_${d.firstFromNewCity?.city ?? ''}`;
+    case 'DAILY_UPDATE':    return `DAILY_${new Date().toISOString().split('T')[0]}`;
+    case 'WEEKLY_SUMMARY':  return `WEEKLY_${new Date().toISOString().split('T')[0]}`;
+    default:                return m.type;
+  }
+}
+
 export async function runGrowthAgent(dryRun = false): Promise<void> {
   try {
     if (dryRun) {
@@ -63,11 +81,30 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     const { pushToBacklog, getNextFromBacklog, supersedeMilestones } = await import('./supabase/queue');
 
     const allMilestones = detectAllMilestones(safeData);
-    let milestone: MilestoneEvent = allMilestones.length > 0 ? allMilestones[0] : { hasMilestone: false, type: 'NONE' as const, message: '', data: safeData };
+
+    // Dedup — drop milestones already posted in the last 30 days, so a new joiner / event
+    // posts ONCE and never resurfaces on later days.
+    const { serviceClient } = await import('./supabase/client');
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: postedRows } = await serviceClient
+      .from('content_backlog')
+      .select('data')
+      .eq('type', 'MILESTONE')
+      .eq('status', 'posted')
+      .gte('created_at', since);
+    const postedSigs = new Set(
+      (postedRows || []).map((r: { data?: { signature?: string } }) => r.data?.signature).filter(Boolean)
+    );
+    const freshMilestones = allMilestones.filter(m => !postedSigs.has(milestoneSignature(m)));
+    if (allMilestones.length !== freshMilestones.length) {
+      console.log(`   Skipped ${allMilestones.length - freshMilestones.length} already-posted milestone(s).`);
+    }
+
+    let milestone: MilestoneEvent = freshMilestones.length > 0 ? freshMilestones[0] : { hasMilestone: false, type: 'NONE' as const, message: '', data: safeData };
     let backlogId: string | null = null;
 
     if (!milestone.hasMilestone) {
-      console.log('💤 No organic milestone today. Checking backlog...');
+      console.log('💤 No fresh organic milestone today. Checking backlog...');
       const backlogItem = await getNextFromBacklog('MILESTONE');
       if (backlogItem) {
         console.log(`📦 Found queued milestone: [${backlogItem.data.type}] ${backlogItem.data.message}`);
@@ -81,9 +118,12 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
       console.log(`🎉 Organic Milestone detected: [${milestone.type}] ${milestone.message}`);
       // Supersede older milestones since we have a fresh organic one
       await supersedeMilestones();
-      // Push any secondary milestones to backlog (priority = 10 - index)
-      for (let i = 1; i < allMilestones.length; i++) {
-        await pushToBacklog('MILESTONE', 10 - i, allMilestones[i], 7);
+      // Queue only EVERGREEN secondaries (skip date-sensitive ones that go stale tomorrow),
+      // with a short 2-day shelf life so nothing lingers and resurfaces.
+      for (let i = 1; i < freshMilestones.length; i++) {
+        const m = freshMilestones[i];
+        if (DATE_SENSITIVE_MILESTONES.has(m.type)) continue;
+        await pushToBacklog('MILESTONE', 10 - i, m, 2);
       }
     }
 
@@ -132,6 +172,15 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     // ── STEP 6: Always send to Telegram ──
     console.log('📱 Sending to Telegram...');
     await sendDraftToFounder(posts);
+
+    // Record this milestone as posted (by signature) so it never resurfaces on a later day.
+    await serviceClient.from('content_backlog').insert({
+      type: 'MILESTONE',
+      status: 'posted',
+      priority: 0,
+      data: { signature: milestoneSignature(milestone), mtype: milestone.type, message: milestone.message },
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    });
 
     // ── STEP 7: Auto-post if enabled ──
     if (AUTO_POST) {
