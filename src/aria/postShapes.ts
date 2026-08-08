@@ -19,18 +19,28 @@ export interface PostShape {
   brief: string;
 }
 
+// REPORTING shapes, not commentary shapes.
+//
+// The difference decides everything. Commentary reacts to a headline and tells the reader what
+// it means for them — which is where "for emerging filmmakers, this signals a growing
+// recognition of the importance of..." comes from. Reporting states what happened, adds what
+// the reader didn't already know, and stops. ADIRA is not the best source on filmmaking craft
+// and never will be; she can be the one who actually went and checked. Authority here comes
+// from attention, not expertise.
+//
+// None of these shapes asks what the story means for the reader. That is the reader's job.
 export const COMMENTARY_SHAPES: PostShape[] = [
   {
-    name: 'person-first',
-    brief: `Open on one specific person from the story, at the moment before anyone knew their name. Let the facts of what they did carry the weight — do not explain the lesson underneath them. Somewhere in the middle, say plainly what it cost to be that person. Close by asking one thing only a working filmmaker could answer.`,
+    name: 'straight-report',
+    brief: `Report it flat. Who, what, where, when, how much — the concrete facts in plain declarative sentences, most important first. Include the numbers and names exactly as the sources give them. Add one piece of context a reader wouldn't already have: a comparison, a precedent, a figure that puts it in scale. Then stop. Do not interpret it, do not draw a lesson, do not address the reader.`,
   },
   {
-    name: 'contrarian',
-    brief: `Open by naming what everyone assumes about this corner of the industry, then use a concrete detail from the story to show the opposite is happening. Do not soften it or balance it. Close on a flat statement rather than a question — the sharpest one-line version of what just changed.`,
+    name: 'buried-detail',
+    brief: `Every outlet led with the same headline. Lead with the thing they mentioned in passing and moved on from — the budget line, the runtime, the fact that it was shot in 19 days, the name nobody recognised. Say why that detail is the more interesting fact, using only what the sources actually report. End on the detail itself, not on advice.`,
   },
   {
-    name: 'flat-specifics',
-    brief: `No throat-clearing and no framing sentence. Stack the concrete facts from the story — names, numbers, dates, decisions — in short declarative lines, and let the accumulation do the arguing. One line at the end reframes what that stack means for someone with nothing on their reel yet. No question anywhere.`,
+    name: 'checked-it',
+    brief: `Report what the sources actually agree on, and say plainly where they don't. If two outlets give different numbers, give both and name them. If a claim appears everywhere but traces to one press release, say that. This is the shape where being careful IS the value — you are not the expert, you are the one who checked. End when the checking ends.`,
   },
 ];
 

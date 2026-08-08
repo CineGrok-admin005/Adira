@@ -4,6 +4,7 @@ dotenv.config();
 
 import { ADIRA_SYSTEM_PROMPT } from '../aria/characterCard';
 import { expandLinkedInIfShort, parseLinkedInLengthTag, stripLengthDeclaration } from '../aria/linkedinLength';
+import { enforceLinkedInQuality } from '../aria/qualityGate';
 import { readMemory, writeMemory } from '../aria/memory';
 import { getAudienceMode, audienceContext } from '../aria/audience';
 import { COMMENTARY_SHAPES, pickShape, type PostShape } from '../aria/postShapes';
@@ -158,8 +159,8 @@ Follow that arc, including how it ends. If the shape closes on a statement, do n
 GROUNDING: every concrete claim must come from TODAY'S story (its title, what the video says, or the press coverage). If the story is too thin to say anything specific and true, the LinkedIn post will read generic — in that case pick a different story or return NO_WORTHWHILE_STORY. Generic is the failure mode. A reader should finish the post knowing it could only have been written about THIS story.
 
 FORMAT: short paragraphs (1-2 sentences), white space between them, scannable on a phone. First-person, human, a real point of view — you're a person on LinkedIn, not a brand page. One idea only.
-Do NOT put any link or URL in the body — LinkedIn down-ranks posts that link out. The link goes in the first comment.
-Hashtags (2-3): #CineGrok + source channel + specific show or film name.
+Do NOT put any link or URL anywhere — not in the body, not in a comment. Outbound links cost reach and the first-comment workaround is detected now. cinegrok.in lives in the profile, not the post.
+Hashtags: exactly 2, and only real proper nouns — the film, the festival, the studio. Never the word "Hashtags:" itself.
 
 Having declared LONG, write 1,300-2,000 characters — a LONG post under 1,000 characters has not done its job. Every paragraph needs its own real content pulled from today's story. If you can only fill them by restating your hook in different words, the story is too thin for LONG — declare SHORT instead and write 300-600 characters. Put that declaration in the length tag at the top of this section, never in the post text itself.
 
@@ -168,8 +169,8 @@ End on your hashtags; the "— ADIRA, CineGrok" byline is added for you. Never i
 [TWEET_BRIEF]
 Do NOT write a tweet. Write a short brief that the CineGrok Tweets project (Claude) will turn into the actual viral tweet. Keep it to these three lines:
 STORY: [what happened — one specific line, with the real name/number/title]
-WHY IT MATTERS: [what it changes for a filmmaker who hasn't had their break yet — one line]
-ANGLE: [the sharpest CineGrok take on it — the thing only we would say]
+THE DETAIL: [the most concrete fact in the coverage — a number, a runtime, a budget, a date. Not what it means. The fact itself.]
+SOURCING: [who reported it, and whether the sources agree]
 
 [TONE]
 One word: e.g. Observational, Sharp, Warm, Poetic, Dry, Questioning
@@ -187,9 +188,9 @@ Choose EXPRESSION based on EMOTION:
 - serious → eyes: intense gaze direct to camera, brows: furrowed gravitas, mouth: pressed determined, posture: rigid upright
 - warm → eyes: crinkled soft smile, brows: relaxed, mouth: genuine warm smile, posture: open relaxed
 
-POST CATEGORY: [Commentary / Industry Reaction / News]
+POST CATEGORY: [Report / Verified Fact / Industry News]
 WHAT HAPPENED: [one sentence]
-WHY THIS MATTERS: [what it means for emerging filmmakers]
+THE CONCRETE DETAIL: [the specific fact the image should evoke — a place, an object, a number. Not an abstraction.]
 SHOULD ADIRA BE IN THIS?
   Write "No" when: the story is about a specific film, show, festival, or person (e.g. Raja Shivaji, Netflix India slate, MAMI lineup). The image should be a cinematic concept visual — a film set, a spotlight, a clapperboard, a festival marquee. No character needed.
   Write "Yes" when: ADIRA is making a personal observation about the filmmaker community itself, or the post is about CineGrok's own growth and voice.
@@ -299,6 +300,21 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
   const lengthResult = await expandLinkedInIfShort(groq, linkedinBody, declaredLength, storyContext);
   linkedinBody = lengthResult.text;
   console.log(`   💼 LinkedIn: ${lengthResult.originalLength} chars (declared ${lengthResult.declaredTarget})${lengthResult.retried ? ` → retried → ${lengthResult.finalLength} chars` : ''}`);
+
+  // Banned phrases and the question budget are enforced HERE, not in the prompt. The prompt
+  // has banned "journey" since day one and it still shipped. One rewrite, then rejection —
+  // publishing nothing beats publishing filler, which costs reach on everything after it.
+  const quality = await enforceLinkedInQuality(groq, linkedinBody, storyContext);
+  linkedinBody = quality.text;
+  if (!quality.passed) {
+    console.error(`❌ generateCommentary: quality gate rejected the post — ${quality.violations.join(' | ')}`);
+    const { notifyFailure } = await import('../telegram/notifyFailure');
+    await notifyFailure(
+      'Commentary (Type 2) — post rejected by quality gate, nothing published',
+      new Error(`${quality.violations.join('\n')}\n\nDraft:\n${linkedinBody.slice(0, 600)}`),
+    );
+    return null;
+  }
 
   const linkedin  = addSigLi(linkedinBody);
   // Tweet brief = context for the Tweets Claude project (NOT a finished tweet). No signature.

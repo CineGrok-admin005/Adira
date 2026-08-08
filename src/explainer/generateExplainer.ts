@@ -4,6 +4,7 @@ dotenv.config();
 
 import { ADIRA_SYSTEM_PROMPT } from '../aria/characterCard';
 import { expandLinkedInIfShort, parseLinkedInLengthTag, stripLengthDeclaration } from '../aria/linkedinLength';
+import { enforceLinkedInQuality } from '../aria/qualityGate';
 import { readMemory, writeMemory, formatMemoryContext } from '../aria/memory';
 import { getAudienceMode, audienceContext } from '../aria/audience';
 import { EXPLAINER_SHAPES, pickShape, type PostShape } from '../aria/postShapes';
@@ -184,6 +185,13 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line]`;
   const lengthResult = await expandLinkedInIfShort(groq, linkedinBody, declaredLength, seed.topic);
   linkedinBody = lengthResult.text;
   console.log(`   💼 LinkedIn: ${lengthResult.originalLength} chars (declared ${lengthResult.declaredTarget})${lengthResult.retried ? ` → retried → ${lengthResult.finalLength} chars` : ''}`);
+
+  // See generateCommentary: enforced in code because the prompt-level ban demonstrably fails.
+  const quality = await enforceLinkedInQuality(groq, linkedinBody, seed.topic);
+  linkedinBody = quality.text;
+  if (!quality.passed) {
+    throw new Error(`generateExplainer: quality gate rejected the post — ${quality.violations.join(' | ')}`);
+  }
 
   const linkedin = addSigLi(linkedinBody);
   const tweetBrief = (tweetBriefMatch?.[1] ?? '').replace(/\n{3,}/g, '\n\n').trim();

@@ -44,6 +44,18 @@ export function stripLengthDeclaration(body: string): string {
     .trim();
 }
 
+// True when any substantial line occurs 3+ times — the signature of a model padding to a
+// length target by restating itself rather than adding content.
+function hasRepeatedBlocks(text: string): boolean {
+  const counts = new Map<string, number>();
+  for (const line of text.split('\n')) {
+    const key = line.trim().toLowerCase().slice(0, 120);
+    if (key.length < 40) continue; // ignore short lines, hashtags, the byline
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return [...counts.values()].some((n) => n >= 3);
+}
+
 // Single-retry expansion. Never throws — any failure (including a 429 from
 // Groq's free-tier TPM cap) falls back to the original text unchanged.
 export async function expandLinkedInIfShort(
@@ -83,10 +95,24 @@ Output ONLY the rewritten post text — no labels, no preamble, no quotes around
     });
 
     const choice = response.choices[0];
-    if (choice?.finish_reason === 'length') {
-      console.warn('   ⚠️  LinkedIn retry itself got truncated (finish_reason=length).');
-    }
     const expanded = choice?.message?.content?.trim();
+
+    // A truncated retry is NOT a valid expansion. Observed 2026-08-08: the retry hit the token
+    // ceiling, looped the same paragraph six times and stopped mid-word ("...by Z"), producing
+    // 3,882 characters of garbage — and the old check accepted it, because the only test was
+    // "is it longer than before" and truncated repetition is certainly longer.
+    if (choice?.finish_reason === 'length') {
+      console.warn('   ⚠️  Retry was truncated (finish_reason=length) — discarding it, keeping the original.');
+      return { text: currentText, declaredTarget, originalLength, finalLength: originalLength, retried: true };
+    }
+
+    // Same failure can arrive untruncated: the model pads to length by restating one paragraph.
+    // Reject when any substantial line appears three or more times.
+    if (expanded && hasRepeatedBlocks(expanded)) {
+      console.warn('   ⚠️  Retry padded itself by repeating a paragraph — discarding it, keeping the original.');
+      return { text: currentText, declaredTarget, originalLength, finalLength: originalLength, retried: true };
+    }
+
     if (expanded && expanded.length > originalLength) {
       return { text: expanded, declaredTarget, originalLength, finalLength: expanded.length, retried: true };
     }
