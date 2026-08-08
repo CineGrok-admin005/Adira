@@ -14,11 +14,11 @@ export interface CachedImageData {
   speechBubble?: string;
 }
 
-function cachePath(type: 'type1' | 'type2'): string {
+function cachePath(type: 'type1' | 'type2' | 'type3'): string {
   return path.join(CACHE_DIR, `pending-image-${type}.json`);
 }
 
-export function saveImageCache(type: 'type1' | 'type2', data: CachedImageData): void {
+export function saveImageCache(type: 'type1' | 'type2' | 'type3', data: CachedImageData): void {
   try {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
     fs.writeFileSync(cachePath(type), JSON.stringify(data), 'utf8');
@@ -28,7 +28,7 @@ export function saveImageCache(type: 'type1' | 'type2', data: CachedImageData): 
   }
 }
 
-export function loadImageCache(type: 'type1' | 'type2'): CachedImageData | null {
+export function loadImageCache(type: 'type1' | 'type2' | 'type3'): CachedImageData | null {
   try {
     const raw  = fs.readFileSync(cachePath(type), 'utf8');
     const data = JSON.parse(raw) as CachedImageData;
@@ -44,7 +44,7 @@ export function loadImageCache(type: 'type1' | 'type2'): CachedImageData | null 
   }
 }
 
-export function clearImageCache(type: 'type1' | 'type2'): void {
+export function clearImageCache(type: 'type1' | 'type2' | 'type3'): void {
   try { fs.unlinkSync(cachePath(type)); } catch { /* already gone */ }
 }
 

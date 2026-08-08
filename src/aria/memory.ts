@@ -16,6 +16,18 @@ export interface AdiraMemory {
 }
 
 const EMPTY_MEMORY: AdiraMemory = { instagram: [], linkedin: [], twitter: [], summaries: [] };
+
+// A missing table or broken schema here is a startup-class fault, not a transient one — and
+// because both paths below only warn, it is precisely what let adira_memory sit missing for
+// months while every prompt silently read "no recent history". Alert once per run: loud
+// enough to notice, quiet enough not to fire three times per post.
+let memoryAlertSent = false;
+async function alertMemoryFailure(stage: string, err: unknown): Promise<void> {
+  if (memoryAlertSent) return;
+  memoryAlertSent = true;
+  const { notifyFailure } = await import('../telegram/notifyFailure');
+  await notifyFailure(`memory ${stage} — ADIRA is writing without history`, err);
+}
 const FULL_DETAIL_DAYS = 6;
 const PLATFORMS = ['instagram', 'linkedin', 'twitter'] as const;
 
@@ -60,7 +72,7 @@ async function compact(): Promise<void> {
       const audiences = [...new Set(rows.map(r => r.audience))].join(', ');
       const summaryText = `Week of ${week}: tones — ${tones}. types — ${types}. audience — ${audiences}.`;
 
-      await serviceClient.from('adira_memory').insert({
+      const { error: insertError } = await serviceClient.from('adira_memory').insert({
         platform,
         date: week,
         milestone_type: 'WEEKLY_SUMMARY',
@@ -71,10 +83,21 @@ async function compact(): Promise<void> {
         summary_text: summaryText,
       });
 
-      await serviceClient
+      // Order matters and so does this guard: both calls return errors rather than throwing,
+      // so an unchecked insert failure followed by a successful delete would destroy the very
+      // history the summary was meant to preserve. Never delete what wasn't summarised.
+      if (insertError) {
+        throw new Error(`adira_memory compaction insert failed (${platform}, week ${week}): ${insertError.message}`);
+      }
+
+      const { error: deleteError } = await serviceClient
         .from('adira_memory')
         .delete()
         .in('id', rows.map(r => r.id));
+
+      if (deleteError) {
+        throw new Error(`adira_memory compaction delete failed (${platform}, week ${week}): ${deleteError.message}`);
+      }
     }
   }
 }
@@ -86,7 +109,7 @@ export async function readMemory(): Promise<AdiraMemory> {
 
     for (const platform of PLATFORMS) {
       // Recent full-detail rows (last 6 days)
-      const { data: recent } = await serviceClient
+      const { data: recent, error } = await serviceClient
         .from('adira_memory')
         .select('*')
         .eq('platform', platform)
@@ -94,6 +117,12 @@ export async function readMemory(): Promise<AdiraMemory> {
         .gte('date', cutoff)
         .order('date', { ascending: false })
         .limit(FULL_DETAIL_DAYS);
+
+      // supabase-js RETURNS errors rather than throwing them. Ignoring `error` here is what
+      // made this failure invisible for months: a missing table just yielded `data: null`,
+      // `(recent ?? [])` collapsed it to an empty array, the catch below never fired, and
+      // every prompt was silently told "no recent history". Surface it instead.
+      if (error) throw new Error(`adira_memory read failed (${platform}): ${error.message}`);
 
       result[platform] = (recent ?? []).map(r => ({
         date: r.date,
@@ -105,18 +134,21 @@ export async function readMemory(): Promise<AdiraMemory> {
     }
 
     // Weekly summaries (last 4 weeks, any platform — gives long-term pattern)
-    const { data: summaries } = await serviceClient
+    const { data: summaries, error: summaryError } = await serviceClient
       .from('adira_memory')
       .select('summary_text')
       .eq('is_summary', true)
       .order('date', { ascending: false })
       .limit(4);
 
+    if (summaryError) throw new Error(`adira_memory summary read failed: ${summaryError.message}`);
+
     result.summaries = (summaries ?? []).map(r => r.summary_text).filter(Boolean);
 
     return result;
   } catch (err) {
     console.warn('⚠️  Memory read failed, starting fresh:', (err as Error).message);
+    await alertMemoryFailure('read', err);
     return EMPTY_MEMORY;
   }
 }
@@ -126,7 +158,7 @@ export async function writeMemory(
   entry: PostMemoryEntry
 ): Promise<void> {
   try {
-    await serviceClient.from('adira_memory').insert({
+    const { error } = await serviceClient.from('adira_memory').insert({
       platform,
       date: entry.date,
       milestone_type: entry.milestoneType,
@@ -136,10 +168,15 @@ export async function writeMemory(
       is_summary: false,
     });
 
+    // Same trap as readMemory: the insert returns its error instead of throwing, so without
+    // this check a write that never lands looks identical to one that succeeded.
+    if (error) throw new Error(`adira_memory write failed (${platform}): ${error.message}`);
+
     // Compact old entries after every write
     await compact();
   } catch (err) {
     console.warn('⚠️  Memory write failed:', (err as Error).message);
+    await alertMemoryFailure('write', err);
   }
 }
 

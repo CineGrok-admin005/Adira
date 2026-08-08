@@ -1,5 +1,5 @@
 import { bot } from './bot';
-import { GeneratedPosts, CommentaryPost } from '../types';
+import { GeneratedPosts, CommentaryPost, ExplainerPost } from '../types';
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -91,6 +91,45 @@ export async function sendCommentaryDraft(post: CommentaryPost): Promise<void> {
   }
 
   console.log('✅ Commentary draft sent to Telegram');
+}
+
+const PILLAR_LABEL: Record<string, string> = {
+  CRAFT_BREAKDOWN: '🎬 Craft Breakdown',
+  EDUCATIONAL_FRAMEWORK: '📐 Educational Framework',
+  TOOLS_AND_RESOURCES: '🧰 Tools & Resources',
+};
+
+export async function sendExplainerDraft(post: ExplainerPost): Promise<void> {
+  const chatId = process.env.TELEGRAM_CHAT_ID!;
+  const audience = AUDIENCE_LABEL[post.audience] ?? post.audience;
+  const time = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  const pillarLabel = PILLAR_LABEL[post.pillar] ?? post.pillar;
+
+  // Message 1: header + pillar/topic (replaces Commentary's source-story block)
+  await bot.sendMessage(chatId,
+    `🎙️ <b>ADIRA — Explainer Post</b>\n<i>Audience: ${audience} | ${time}</i>\n\n📚 <b>${h(pillarLabel)}</b>\nTopic: ${h(post.topic)}`,
+    { parse_mode: 'HTML' }
+  );
+
+  await bot.sendMessage(chatId, `💼 <b>LINKEDIN</b>\n\n${h(post.linkedin)}\n\n<i>💬 Tip: paste https://cinegrok.in as the FIRST COMMENT — not in the post — for max reach.</i>`, { parse_mode: 'HTML' });
+  await bot.sendMessage(chatId, `🐦 <b>TWEET BRIEF — paste into your Tweets Claude project</b>\n<i>Claude writes the actual tweet + a bonus viral one.</i>\n\n<code>${h(post.tweetBrief)}</code>`, { parse_mode: 'HTML' });
+
+  if (post.imageBuffer) {
+    await bot.sendPhoto(chatId, post.imageBuffer, { caption: `🎨 ADIRA image — ${post.imageStyle} (used on the LinkedIn post)`, parse_mode: 'HTML' });
+  } else {
+    const adiraInImage = !/SHOULD ADIRA BE IN THIS\?\s*No/i.test(post.imagePrompt);
+    const lock = adiraInImage ? `\n\n${h(CHARACTER_LOCK)}` : '';
+    await bot.sendMessage(chatId,
+      `🎨 <b>IMAGE PROMPT</b> (no image generated — make one for LinkedIn) — ${post.imageStyle}\n\n${h(post.imagePrompt)}${lock}`,
+      { parse_mode: 'HTML' }
+    );
+  }
+
+  if (post.instagramBrief) {
+    await bot.sendMessage(chatId, `📋 <b>INSTAGRAM BRIEF — paste into Claude.ai project</b>\n\n<code>${h(post.instagramBrief)}</code>`, { parse_mode: 'HTML' });
+  }
+
+  console.log('✅ Explainer draft sent to Telegram');
 }
 
 export async function sendIntroductionToFounder(posts: GeneratedPosts): Promise<void> {

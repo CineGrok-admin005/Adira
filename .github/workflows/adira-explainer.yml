@@ -1,19 +1,20 @@
-name: ADIRA — Growth Report (~8 AM IST)
+name: ADIRA — Explainer Post (~4 PM IST)
 
 # Runs on GitHub's built-in scheduler. Note: free-tier scheduled runs can be
 # delayed (sometimes by a few hours) during high load — that's a GitHub
 # limitation. Scheduling off the :00/:30 mark (GitHub's most congested
 # minutes) helps but doesn't guarantee exact timing. workflow_dispatch is
-# kept so it can also be triggered by hand.
+# kept so it can also be triggered by hand or by an external precise-timing
+# trigger.
 on:
   schedule:
-    - cron: '37 2 * * *'   # ~8:07 AM IST (UTC+5:30)
+    - cron: '37 10 * * *'  # ~4:07 PM IST (UTC+5:30)
   workflow_dispatch:
 
 # See adira-commentary.yml for the full rationale: the in-code duplicate guard reads at the
 # start of a run but writes minutes later, so overlapping triggers must be serialised here.
 concurrency:
-  group: adira-growth
+  group: adira-explainer
   cancel-in-progress: false   # queue the duplicate; never kill a run mid-post
 
 jobs:
@@ -31,8 +32,8 @@ jobs:
 
       - run: npm ci
 
-      - name: Run ADIRA growth report
-        run: npx ts-node src/index.ts --run-growth
+      - name: Run ADIRA explainer post
+        run: npx ts-node src/index.ts --run-explainer
         env:
           SUPABASE_URL:               ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY:          ${{ secrets.SUPABASE_ANON_KEY }}
@@ -46,13 +47,6 @@ jobs:
           LINKEDIN_PERSON_ID:         ${{ secrets.LINKEDIN_PERSON_ID }}
           LINKEDIN_ORGANIZATION_ID:   ${{ secrets.LINKEDIN_ORGANIZATION_ID }}
           LINKEDIN_TOKEN_EXPIRES_AT:  ${{ secrets.LINKEDIN_TOKEN_EXPIRES_AT }}
-          TWITTER_API_KEY:            ${{ secrets.TWITTER_API_KEY }}
-          TWITTER_API_SECRET:         ${{ secrets.TWITTER_API_SECRET }}
-          TWITTER_ACCESS_TOKEN:       ${{ secrets.TWITTER_ACCESS_TOKEN }}
-          TWITTER_ACCESS_SECRET:      ${{ secrets.TWITTER_ACCESS_SECRET }}
-          YOUTUBE_API_KEY:            ${{ secrets.YOUTUBE_API_KEY }}
-          NEWSDATA_API_KEY:           ${{ secrets.NEWSDATA_API_KEY }}
-          TWITTER_ENABLED:            'false'
           AUTO_POST:                  'true'
           NODE_ENV:                   production
           TIMEZONE:                   Asia/Kolkata

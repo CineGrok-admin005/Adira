@@ -63,6 +63,7 @@ export interface GeneratedPosts {
   audience: AudienceMode;
   imageBuffer?: Buffer;
   instagramBrief?: string; // brief for Claude.ai project carousel generation
+  shapeName?: string; // which arc from postShapes.ts drove this post — archived for analysis
 }
 
 export interface YouTubeVideo {
@@ -105,6 +106,7 @@ export interface CommentaryPost {
   audience: AudienceMode;
   imageBuffer?: Buffer;
   instagramBrief?: string;
+  shapeName?: string; // which arc from postShapes.ts drove this post — archived for analysis
 }
 
 export interface MilestoneEvent {
@@ -125,10 +127,26 @@ export interface MilestoneEvent {
 
 export interface BacklogItem {
   id: string;
-  type: 'MILESTONE' | 'COMMENTARY';
+  type: 'MILESTONE' | 'COMMENTARY' | 'EXPLAINER';
   priority: number;
   data: any;
   status: 'queued' | 'posted' | 'superseded';
   created_at: string;
   expires_at: string;
+}
+
+export type ExplainerPillar = 'CRAFT_BREAKDOWN' | 'EDUCATIONAL_FRAMEWORK' | 'TOOLS_AND_RESOURCES';
+
+export interface ExplainerPost {
+  linkedin: string;
+  tweetBrief: string; // context for the Tweets Claude project — NOT a finished tweet
+  pillar: ExplainerPillar;
+  topic: string; // the exact topics.ts seed string used
+  imagePrompt: string;
+  imageStyle: 'Cinematic' | 'Moody' | 'Surreal';
+  emotion: EmotionState;
+  audience: AudienceMode;
+  imageBuffer?: Buffer;
+  instagramBrief?: string; // brief for Claude.ai project carousel generation
+  shapeName?: string; // which arc from postShapes.ts drove this post — archived for analysis
 }

@@ -4,6 +4,7 @@
 import Groq from 'groq-sdk';
 import { MilestoneEvent, GeneratedPosts } from '../types';
 import { ADIRA_SYSTEM_PROMPT } from '../aria/characterCard';
+import { expandLinkedInIfShort } from '../aria/linkedinLength';
 import { readMemory, writeMemory, formatMemoryContext } from '../aria/memory';
 import { getAudienceMode, audienceContext } from '../aria/audience';
 import dotenv from 'dotenv';
@@ -112,7 +113,16 @@ Hashtags (max 3): always #CineGrok + specific city if mentioned + specific role.
 
 [LINKEDIN]
 [TONE: <tone name>]
-<3-4 sentences. Professional but human. No excessive emojis. End with 2-3 hashtags>
+[LINKEDIN_LENGTH: SHORT or LONG — state exactly which one you are choosing, then hit it for real]
+<Write to the LinkedIn playbook in your character — dwell time is the game, comments beat likes, and you're a person posting, not a brand.
+- Decide length from the data FIRST and declare it in the tag above: SHORT means 300-600 characters, done, don't pad it. LONG means a floor of 1,300-2,000 characters using all five beats below — that floor is not a suggestion. When there's a real story to unpack (a person, a city, a shift), declare LONG. When in doubt, declare LONG — the thin 3-4 sentence post is the one that gets ignored, and it is a worse outcome than running long.
+- Open above the ~210-char "see more" fold with a story, a contrarian line, or one concrete fact — never a preamble or a question.
+- If LONG, use five short paragraphs, each with real content (not five one-liners): (1) hook, (2) the tension under the surface — 2-3 sentences with a second concrete detail beyond the hook, (3) what it changes for someone still becoming — 2-3 sentences, specific to today's data, (4) the honest cost, said plainly — 1-2 sentences, (5) ONE specific, genuine question. If you can't fill paragraphs 2-4 with real content pulled from today's data, the story is too thin for LONG — write SHORT instead.
+- Exactly ONE question in the whole post, as the final line before the hashtags. No vague rhetorical questions in the middle — make statements in the body, ask once at the end.
+- ⛔ Never write the scaffolding out loud — no "the real tension is", "this changes one thing", "what this means is". Say the actual specific thing. If a line could open any post about anything, cut it. Use today's real cities/roles/names.
+- Short paragraphs, white space, scannable, first-person, one idea.
+- No link or URL in the body — the link goes in the first comment.
+- End with 2-3 specific hashtags.>
 
 [TWITTER]
 [TONE: <tone name>]
@@ -190,18 +200,20 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp, specific opening line — the sharpest v
 
   const response = await client.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
-    max_tokens: 2000,
+    max_completion_tokens: 4500, // raised from 2500 — input is ~5-6.5k tokens, keeps total under Groq's 12,000 TPM free-tier cap
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },
       { role: 'user', content: userPrompt },
     ],
   });
+  console.log(`   🔢 Groq usage: ${response.usage?.total_tokens ?? '?'} tokens (prompt ${response.usage?.prompt_tokens ?? '?'} / completion ${response.usage?.completion_tokens ?? '?'}), finish_reason=${response.choices[0]?.finish_reason}`);
 
   const text = response.choices[0]?.message?.content ?? '';
 
   // Parse posts
   const instagramMatch = text.match(/\[INSTAGRAM\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[LINKEDIN\])/);
-  const linkedinMatch  = text.match(/\[LINKEDIN\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[TWITTER\])/);
+  const linkedinMatch  = text.match(/\[LINKEDIN\]\n(?:\[TONE:[^\]]*\]\n)?(?:\[LINKEDIN_LENGTH:[^\]]*\]\n)?([\s\S]*?)(?=\[TWITTER\])/);
+  const linkedinLengthMatch = text.match(/\[LINKEDIN\]\n(?:\[TONE:[^\]]*\]\n)?\[LINKEDIN_LENGTH:\s*(SHORT|LONG)\]/i);
   const twitterMatch   = text.match(/\[TWITTER\]\n(?:\[TONE:[^\]]*\]\n)?([\s\S]*?)(?=\[EMOTION\]|\[IMAGE_PROMPT\])/);
   const emotionMatch   = text.match(/\[EMOTION\]\s*(excited|thoughtful|reporting|serious|warm)/i);
   const imagePromptMatch = text.match(/\[IMAGE_PROMPT\]\n([\s\S]*?)(?=\[IMAGE_STYLE\])/);
@@ -214,7 +226,9 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp, specific opening line — the sharpest v
   const twitterTone = text.match(/\[TWITTER\]\n\[TONE:\s*([^\]]+)\]/)?.[1]?.trim() ?? 'unknown';
 
   const SIG = '\n\nhttps://cinegrok.in\n— ADIRA, CineGrok';
+  const SIG_LI = '\n\n— ADIRA, CineGrok'; // LinkedIn down-ranks outbound links in the body — link goes in the first comment
   const addSig = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG;
+  const addSigLi = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG_LI;
 
   // Programmatically inject social handles and CineGrok links — never rely on the model for this
   const joiners = data.recentPublicJoiners;
@@ -242,17 +256,31 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp, specific opening line — the sharpest v
     cineGrokLinks,
   ].filter(Boolean).join('\n');
 
-  const liRaw = linkedinMatch?.[1]?.trim() ?? 'Could not generate LinkedIn post';
+  let liRaw = linkedinMatch?.[1]?.trim() ?? 'Could not generate LinkedIn post';
+  if (linkedinMatch?.[1]) {
+    const declaredLength = (linkedinLengthMatch?.[1]?.toUpperCase() as 'SHORT' | 'LONG' | undefined) ?? 'UNKNOWN';
+    const storyContext = `${event.message}\n${joinersLine}`;
+    const lengthResult = await expandLinkedInIfShort(client, liRaw, declaredLength, storyContext);
+    liRaw = lengthResult.text;
+    console.log(`   💼 LinkedIn: ${lengthResult.originalLength} chars (declared ${lengthResult.declaredTarget})${lengthResult.retried ? ` → retried → ${lengthResult.finalLength} chars` : ''}`);
+  }
+  // No cinegrok.in links in the LinkedIn body — outbound links cost ~40% reach.
+  // The cinegrok.in link is added as the first comment in postToLinkedIn().
+  // linkedInMentions are linkedin.com URLs (on-platform), so they're safe to keep.
   const liSuffix = [
     linkedInMentions,
-    cineGrokLinks,
   ].filter(Boolean).join('\n');
 
   const twRaw = twitterMatch?.[1]?.trim() ?? 'Could not generate Twitter post';
   const twSuffix = cineGrokLinks ? cineGrokLinks.split('\n')[0] : ''; // just one link on Twitter
 
   const instagram = addSig(igSuffix ? `${igRaw}\n${igSuffix}` : igRaw);
-  const linkedin  = addSig(liSuffix ? `${liRaw}\n${liSuffix}` : liRaw);
+  // Strip any cinegrok.in URL the model wrote into the LinkedIn body, then sign without a URL.
+  const liBody = (liSuffix ? `${liRaw}\n${liSuffix}` : liRaw)
+    .replace(/https?:\/\/(www\.)?cinegrok\.in\/?\S*/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  const linkedin  = addSigLi(liBody);
   const twitter   = addSig(twSuffix ? `${twRaw}\n${twSuffix}` : twRaw);
   const imagePrompt = imagePromptMatch?.[1]?.trim() ?? 'Cinematic film set in India, warm golden lighting, filmmaker at work';
   const rawStyle  = imageStyleMatch?.[1]?.trim() ?? 'Cinematic';

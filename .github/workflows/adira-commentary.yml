@@ -1,13 +1,27 @@
-name: ADIRA — Commentary Posts (1 PM + 7 PM IST)
+name: ADIRA — Commentary Posts (~12 PM / 8 PM IST)
 
 # Runs on GitHub's built-in scheduler. Note: free-tier scheduled runs can be
 # delayed (sometimes by a few hours) during high load — that's a GitHub
-# limitation. workflow_dispatch is kept so it can also be triggered by hand.
+# limitation. Scheduling off the :00/:30 mark (GitHub's most congested
+# minutes) helps but doesn't guarantee exact timing. workflow_dispatch is
+# kept so it can also be triggered by hand or by an external precise-timing
+# trigger. The former 4 PM slot now belongs to the Explainer workflow
+# (adira-explainer.yml).
 on:
   schedule:
-    - cron: '30 7 * * *'   # 1:00 PM IST (UTC+5:30)
-    - cron: '30 13 * * *'  # 7:00 PM IST (UTC+5:30)
+    - cron: '37 6 * * *'   # ~12:07 PM IST (UTC+5:30)
+    - cron: '37 14 * * *'  # ~8:07 PM IST (UTC+5:30)
   workflow_dispatch:
+
+# hasPostedRecently() alone does NOT stop double-posts: it reads at the top of the run but
+# the 'posted' row is only written minutes later, after the LLM call, image generation and
+# the LinkedIn upload. Two runs starting inside that window both read zero and both publish —
+# which is exactly the 31s and 34s duplicate pairs seen on 2026-07-30 and 2026-07-24.
+# This serialises overlapping triggers (delayed schedule stacking on workflow_dispatch), so
+# the queued run then finds the first run's row and exits correctly. Both are needed.
+concurrency:
+  group: adira-commentary
+  cancel-in-progress: false   # queue the duplicate; never kill a run mid-post
 
 jobs:
   run:

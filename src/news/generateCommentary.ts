@@ -3,39 +3,70 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { ADIRA_SYSTEM_PROMPT } from '../aria/characterCard';
+import { expandLinkedInIfShort, parseLinkedInLengthTag, stripLengthDeclaration } from '../aria/linkedinLength';
 import { readMemory, writeMemory } from '../aria/memory';
 import { getAudienceMode, audienceContext } from '../aria/audience';
+import { COMMENTARY_SHAPES, pickShape, type PostShape } from '../aria/postShapes';
+import { fetchArticleText } from './fetchArticle';
+import { rankStories } from './rankStories';
+import { extractProperNouns } from './crossVerify';
 import { VerifiedStory, CommentaryPost } from '../types';
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-export async function generateCommentary(stories: VerifiedStory[]): Promise<CommentaryPost | null> {
+// `shapeOverride` exists so the shape smoke test (src/scripts/test-shapes.ts) can exercise
+// every arc in one run. Production never passes it — the shape is picked per IST day + slot.
+export async function generateCommentary(stories: VerifiedStory[], shapeOverride?: PostShape): Promise<CommentaryPost | null> {
   if (stories.length === 0) return null;
 
   const memory = await readMemory();
   const audience = getAudienceMode();
+  const shape = shapeOverride ?? pickShape(COMMENTARY_SHAPES);
+  console.log(`   Post shape: ${shape.name}`);
 
   const clean = (t: string) => (t || '').replace(/\s+/g, ' ').trim();
 
-  const storyList = stories
-    .slice(0, 8)
-    .map((s, i) => {
+  // Drop off-beat junk (gossip/music/politics) and float real industry-decision stories to the
+  // top before the model picks. Falls back to the raw list if filtering empties it.
+  const pool = rankStories(stories);
+  const candidates = pool.slice(0, 6);
+
+  // Budget note: Groq free tier caps requests at 12,000 tokens/min (input + reserved output).
+  // So we keep the candidate list lean and put the real depth (full article text) only on the
+  // top few. This lands the request around ~7-8k tokens — comfortably under the cap.
+  const ARTICLE_STORIES = 3;   // fetch the full article body for only the top 3 candidates
+  const ARTICLE_CHARS = 700;   // chars of article body injected into the prompt per story
+
+  const storyBlocks = await Promise.all(
+    candidates.map(async (s, i) => {
       const v = s.youtubeVideo;
-      const desc = clean(v.description).slice(0, 300);
+      const desc = clean(v.description).slice(0, 400);
       const coverage = s.matchingNews
-        .slice(0, 3)
+        .slice(0, 2)
         .map(n => {
-          const nd = clean(n.description).slice(0, 200);
+          const nd = clean(n.description).slice(0, 250);
           return `   • ${n.source || 'Press'}: "${clean(n.title)}"${nd ? ` — ${nd}` : ''}`;
         })
         .join('\n');
+
+      // Fetch the lead press article's body for the top stories (skip YouTube links).
+      let fullReport = '';
+      if (i < ARTICLE_STORIES) {
+        const lead = s.matchingNews.find(n => n.link && !/youtube\.com|youtu\.be/i.test(n.link));
+        if (lead?.link) {
+          const body = await fetchArticleText(lead.link);
+          if (body) fullReport = `\nFull report (${lead.source || 'press'}): ${clean(body).slice(0, ARTICLE_CHARS)}`;
+        }
+      }
+
       return `[${i + 1}] ${v.channelTitle} (YouTube): "${clean(v.title)}"
 URL: ${v.url}
 What the video itself says: ${desc || '(no description available)'}
 Press coverage of the same story:
-${coverage || '   • (no additional press detail)'}`;
+${coverage || '   • (no additional press detail)'}${fullReport}`;
     })
-    .join('\n\n');
+  );
+  const storyList = storyBlocks.join('\n\n');
 
   const prompt = `${audienceContext(audience)}
 
@@ -53,7 +84,7 @@ ${memory.instagram.length > 0 || memory.linkedin.length > 0 || memory.twitter.le
 ${storyList}
 
 ## GROUNDING — THE MOST IMPORTANT RULE
-Every concrete claim you write must come from the verified story you pick above — its title, "what the video itself says", or its press coverage. Never introduce a number, a slate, an announcement, a name, or an event that is not in that story. Do not reuse facts from the examples further down (they show tone only). If the story you picked does not give you enough specific detail to say something true and worth reading, write "NO_WORTHWHILE_STORY" instead of padding it with generic claims.
+Every concrete claim you write must come from the verified story you pick above — its title, "what the video itself says", its press coverage, or its "Full report" (the actual article text — your richest source of specific names, numbers and quotes; mine it for the concrete detail that makes a post un-generic). Never introduce a number, a slate, an announcement, a name, or an event that is not in that story. Do not reuse facts from the examples further down (they show tone only). If the story you picked does not give you enough specific detail to say something true and worth reading, write "NO_WORTHWHILE_STORY" instead of padding it with generic claims.
 
 ## SKIP THIS STORY IF:
 - It is a music release, song launch, or promotional trailer
@@ -72,17 +103,20 @@ BAD (do not write like this):
 "A powerful OST can make all the difference in a film. For emerging filmmakers, it's a reminder to pay attention to every detail of the cinematic experience."
 → A blog post. Generic. No point of view. Could have been written by anyone about anything.
 
-GOOD shape (write like this — but with TODAY'S facts):
-"[Specific person] did [specific thing] before anyone knew their name. [Who backed them] trusted them anyway. The question for everyone building their reel on CineGrok right now: are you putting yourself where that trust can find you? 🎬 #CineGrok #[SpecificName] #[SpecificTopic]"
-→ Specific. Names a real person/event from the story. Asks a real question. Makes the reader feel something.
+GOOD is not a template — it is a set of tests your draft has to pass:
+→ It names a real person, film, number or decision from today's story in the first two lines.
+→ Someone who read the same story would still learn something from your angle on it.
+→ Swap in a different story and the post falls apart, because nothing in it is generic.
+→ It makes the reader feel the stakes rather than being told what the stakes are.
 
 BAD:
 "The Indian film industry is evolving. Emerging filmmakers should take note of these changes and adapt their strategies accordingly."
 → Empty. Says nothing.
 
-GOOD shape:
-"[The concrete thing that happened in today's story, with its real number or name]. That changes [the specific thing it unlocks or closes] for [who]. The question is [the real question it raises for someone still becoming]. #CineGrok #[SpecificName]"
-→ Concrete detail from the story. Real stakes. Speaks directly to the person reading.
+GOOD, again as tests rather than a mould:
+→ The concrete thing that happened is stated flat, with its real number or name attached.
+→ What it opens or closes is named precisely, and for a specific kind of person.
+→ Nothing in it could have been written before reading today's story.
 
 ## YOUR TASK
 
@@ -100,13 +134,36 @@ The number of the story you picked (e.g. 3)
 Hashtags (max 3): always #CineGrok + the specific show or person discussed + 1 hyper-specific topic. No generic hashtags. Remove spaces, capitalise each word.
 
 [LINKEDIN]
-3-4 sentences, written for the LinkedIn feed. Each sentence does different work — don't restate the same point.
-- First line must land on its own before the "see more" fold (~210 chars): lead with the sharpest specific fact from the story, no preamble.
-- Connect it to what this changes for someone at the start of their career.
-- Do NOT put any link or URL in the text — LinkedIn suppresses posts that link out. The link goes in the first comment.
-- Close with one genuine, specific question that invites a real reply — never the generic "who will walk through it" / "who's ready" line.
-- You may use line breaks between thoughts for readability.
+[LINKEDIN_LENGTH: SHORT or LONG — state exactly which one you're about to write, then hit that target for real]
+Write to the LinkedIn playbook in your character (dwell time is the game). The goal is a post a real person reads to the end and replies to — not a 3-line news recap.
+
+DECIDE THE LENGTH FROM THE STORY, AND COMMIT TO IT:
+- If the story is one clean punch — a single number or one sharp truth — declare SHORT above and write 300-600 chars. Don't pad it.
+- If there's a real tension to unpack — a shift, a contradiction, a story behind the headline — declare LONG above and write 1,300-2,000 chars using the LONG-FORM skeleton below as your floor, not your ceiling.
+- When in doubt, declare LONG. The thin 3-4 sentence post is the thing that gets ignored. Do not default to it.
+
+THE FIRST LINE (above the ~210-char "see more" fold) decides ~80% of reach. Open with ONE of:
+- a personal-story angle (a specific person, before anyone knew their name),
+- a contrarian line (the thing everyone assumes vs. what this story actually shows), or
+- one concrete fact/number from the story, stated flat.
+Never open with a preamble or a question.
+
+TODAY'S SHAPE — "${shape.name}". This is the arc of the post, not wording to copy:
+${shape.brief}
+
+Follow that arc, including how it ends. If the shape closes on a statement, do not tack a question on anyway — a flat closing line is usually stronger than a question nobody answers. If it closes on a question, ask exactly one, as the final line before the hashtags, and make it something only a working filmmaker could answer. Never use engagement bait ("who's ready", "thoughts?", "tag someone"). Never scatter rhetorical questions through the middle.
+
+⛔ NEVER write the scaffolding out loud. Do not write phrases like "the real tension is", "this changes one thing", "for the filmmaker still building their first reel", "what this means is", or "one specific question:". Those name the structure — they are not sentences. Write the actual specific thing instead. If a line could open any post about any story, delete it.
+
+GROUNDING: every concrete claim must come from TODAY'S story (its title, what the video says, or the press coverage). If the story is too thin to say anything specific and true, the LinkedIn post will read generic — in that case pick a different story or return NO_WORTHWHILE_STORY. Generic is the failure mode. A reader should finish the post knowing it could only have been written about THIS story.
+
+FORMAT: short paragraphs (1-2 sentences), white space between them, scannable on a phone. First-person, human, a real point of view — you're a person on LinkedIn, not a brand page. One idea only.
+Do NOT put any link or URL in the body — LinkedIn down-ranks posts that link out. The link goes in the first comment.
 Hashtags (2-3): #CineGrok + source channel + specific show or film name.
+
+Having declared LONG, write 1,300-2,000 characters — a LONG post under 1,000 characters has not done its job. Every paragraph needs its own real content pulled from today's story. If you can only fill them by restating your hook in different words, the story is too thin for LONG — declare SHORT instead and write 300-600 characters. Put that declaration in the length tag at the top of this section, never in the post text itself.
+
+End on your hashtags; the "— ADIRA, CineGrok" byline is added for you. Never invent a name, number or event that isn't in today's story.
 
 [TWEET_BRIEF]
 Do NOT write a tweet. Write a short brief that the CineGrok Tweets project (Claude) will turn into the actual viral tweet. Keep it to these three lines:
@@ -166,12 +223,13 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
 
   const response = await groq.chat.completions.create({
     model: 'llama-3.3-70b-versatile',
-    max_tokens: 1200,
+    max_completion_tokens: 3500, // raised from 2200 — input already runs ~7-8k tokens (full article text), keeps total under Groq's 12,000 TPM free-tier cap
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },
       { role: 'user', content: prompt },
     ],
   });
+  console.log(`   🔢 Groq usage: ${response.usage?.total_tokens ?? '?'} tokens (prompt ${response.usage?.prompt_tokens ?? '?'} / completion ${response.usage?.completion_tokens ?? '?'}), finish_reason=${response.choices[0]?.finish_reason}`);
 
   const text = response.choices[0]?.message?.content ?? '';
 
@@ -182,7 +240,11 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
 
   const indexMatch      = text.match(/\[SELECTED_STORY_INDEX\]\s*(\d+)/);
   const instagramMatch  = text.match(/\[INSTAGRAM\]\s*([\s\S]*?)(?=\[LINKEDIN\])/);
-  const linkedinMatch   = text.match(/\[LINKEDIN\]\s*([\s\S]*?)(?=\[TWEET_BRIEF\])/);
+  // See the note in generateExplainer: the model sometimes opens the section with
+  // [LINKEDIN_LENGTH: ...] instead of [LINKEDIN]. Accept either as the opener.
+  const linkedinMatch   = text.match(/\[LINKEDIN(?:_LENGTH)?[^\]]*\]\s*(?:\[LINKEDIN_LENGTH:[^\]]*\]\s*)?([\s\S]*?)(?=\[TWEET_BRIEF\])/);
+  // Read the declaration from the whole response, in any form the model emits it.
+  const declaredLengthTag = parseLinkedInLengthTag(text);
   const tweetBriefMatch = text.match(/\[TWEET_BRIEF\]\s*([\s\S]*?)(?=\[TONE\])/);
   const toneMatch        = text.match(/\[TONE\]\s*([\s\S]*?)(?=\[EMOTION\]|\[IMAGE_PROMPT\])/);
   const emotionMatch     = text.match(/\[EMOTION\]\s*(excited|thoughtful|reporting|serious|warm)/i);
@@ -198,23 +260,85 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
   const addSigLi = (t: string) => t.includes('— ADIRA, CineGrok') ? t : t + SIG_LI;
 
   const instagram = addSig(stripTags(instagramMatch?.[1] ?? ''));
+
+  if (!instagramMatch?.[1] || !linkedinMatch?.[1]) {
+    // Returning null here exits the run quietly. With rotating skeletons that is a real risk:
+    // a shape the model formats badly would stop publishing with no signal at all.
+    console.error('❌ generateCommentary: failed to parse posts from response');
+    const { notifyFailure } = await import('../telegram/notifyFailure');
+    await notifyFailure(
+      'Commentary (Type 2) — could not parse the model response',
+      new Error(
+        `Missing ${!instagramMatch?.[1] ? '[INSTAGRAM]' : ''}${!instagramMatch?.[1] && !linkedinMatch?.[1] ? ' and ' : ''}${!linkedinMatch?.[1] ? '[LINKEDIN]' : ''} section.\n\nFirst 800 chars of response:\n${text.slice(0, 800)}`
+      )
+    );
+    return null;
+  }
+
   // Remove any cinegrok.in URL the model may have written into the LinkedIn body
-  const linkedinBody = stripTags(linkedinMatch?.[1] ?? '')
+  let linkedinBody = stripLengthDeclaration(stripTags(linkedinMatch[1]))
     .replace(/https?:\/\/(www\.)?cinegrok\.in\/?\S*/gi, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+
+  const declaredLength = declaredLengthTag;
+
+  // Ground the retry in whichever candidate the DRAFT is actually about — same proper-noun
+  // overlap approach as the sourceStory match below (not the unreliable [SELECTED_STORY_INDEX]
+  // tag), just run early against the pre-retry text.
+  const draftText = `${linkedinBody}\n${instagram}`.toLowerCase();
+  const overlapFor = (s: VerifiedStory): number => {
+    const nouns = [...extractProperNouns(s.youtubeVideo.title), ...extractProperNouns(s.matchingNews[0]?.title ?? '')];
+    return nouns.filter(n => n.length >= 3 && draftText.includes(n.toLowerCase())).length;
+  };
+  const groundingStory = candidates.reduce((best, s) => overlapFor(s) > overlapFor(best) ? s : best, candidates[0]);
+  const storyContext = groundingStory
+    ? `${groundingStory.youtubeVideo.title}\n${groundingStory.matchingNews.slice(0, 2).map(n => `${n.source || 'Press'}: ${n.title}`).join('\n')}`
+    : '';
+
+  const lengthResult = await expandLinkedInIfShort(groq, linkedinBody, declaredLength, storyContext);
+  linkedinBody = lengthResult.text;
+  console.log(`   💼 LinkedIn: ${lengthResult.originalLength} chars (declared ${lengthResult.declaredTarget})${lengthResult.retried ? ` → retried → ${lengthResult.finalLength} chars` : ''}`);
+
   const linkedin  = addSigLi(linkedinBody);
   // Tweet brief = context for the Tweets Claude project (NOT a finished tweet). No signature.
   const tweetBrief = (tweetBriefMatch?.[1] ?? '').replace(/\n{3,}/g, '\n\n').trim();
 
-  if (!instagramMatch?.[1] || !linkedinMatch?.[1]) {
-    console.error('❌ generateCommentary: failed to parse posts from response');
-    return null;
+  // Which story is the post ACTUALLY about? The 70B model's reported index is unreliable, so
+  // match the written post's proper nouns against each candidate's title. Fall back to the
+  // reported index, then to the top candidate. This keeps the source link + image consistent
+  // with what was written.
+  const postText = `${linkedin}\n${instagram}`.toLowerCase();
+  const contentOverlap = (s: VerifiedStory): number => {
+    const nouns = [
+      ...extractProperNouns(s.youtubeVideo.title),
+      ...extractProperNouns(s.matchingNews[0]?.title ?? ''),
+    ];
+    let hits = 0;
+    for (const n of nouns) if (n.length >= 3 && postText.includes(n.toLowerCase())) hits++;
+    return hits;
+  };
+  let sourceStory = candidates[0];
+  let bestOverlap = 0;
+  for (const s of candidates) {
+    const o = contentOverlap(s);
+    if (o > bestOverlap) { bestOverlap = o; sourceStory = s; }
   }
+  if (bestOverlap === 0) {
+    const reported = parseInt(indexMatch?.[1] ?? '1', 10) - 1;
+    sourceStory = candidates[reported] ?? candidates[0];
+  }
+  // Index into the ORIGINAL array so the caller can queue the unused stories correctly.
+  const originalIndex = Math.max(0, stories.indexOf(sourceStory));
 
-  const selectedIndex = parseInt(indexMatch?.[1] ?? '1', 10) - 1;
-  const sourceStory = stories[selectedIndex] ?? stories[0];
-  const tone = toneMatch?.[1]?.trim() ?? 'Observational';
+  // The model often echoes the prompt's own "One word:" label into the value, which then gets
+  // stored as the tone and fed back into the next post's anti-repetition block as
+  // "[One word: Instructive]" — noise where a real tone should be. Strip the label and keep
+  // only the first line.
+  const tone = (toneMatch?.[1] ?? '')
+    .replace(/^\s*one word\s*:\s*/i, '')
+    .split('\n')[0]
+    .trim() || 'Observational';
   const validEmotions = ['excited', 'thoughtful', 'reporting', 'serious', 'warm'] as const;
   const rawEmotion = emotionMatch?.[1]?.toLowerCase().trim() ?? 'thoughtful';
   const emotion = (validEmotions.includes(rawEmotion as typeof validEmotions[number]) ? rawEmotion : 'thoughtful') as import('../types').EmotionState;
@@ -236,12 +360,13 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
       title: sourceStory.youtubeVideo.title,
       url: sourceStory.youtubeVideo.url,
       newsSources: sourceStory.matchingNews.map(n => n.source).filter(Boolean),
-      originalIndex: selectedIndex
+      originalIndex
     },
     imagePrompt: imagePromptMatch?.[1]?.trim() ?? 'A filmmaker looking at a screen in a dark edit suite, warm single light source',
     imageStyle: (imageStyleMatch?.[1] as 'Cinematic' | 'Moody' | 'Surreal') ?? 'Cinematic',
     emotion,
     audience,
     instagramBrief: instagramBriefMatch?.[1]?.trim(),
+    shapeName: shape.name,
   };
 }

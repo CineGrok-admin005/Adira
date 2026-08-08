@@ -104,7 +104,7 @@ export async function fetchYouTubeVideos(): Promise<YouTubeVideo[]> {
         params: {
           part: 'snippet',
           playlistId: entry.uploadsPlaylistId,
-          maxResults: 5,
+          maxResults: 15, // playlistItems costs 1 unit per call regardless of count — free to widen
           key,
         },
         timeout: 10000,
@@ -125,7 +125,7 @@ export async function fetchYouTubeVideos(): Promise<YouTubeVideo[]> {
           channelTitle: snippet.channelTitle ?? ch.handle,
           publishedAt: pubAt,
           url: `https://www.youtube.com/watch?v=${videoId}`,
-          description: (snippet.description ?? '').slice(0, 500),
+          description: (snippet.description ?? '').slice(0, 1500),
         });
       }
     } catch (err) {

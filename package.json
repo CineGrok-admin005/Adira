@@ -13,12 +13,15 @@
     "test:twitter": "ts-node src/scripts/test-twitter.ts",
     "test:linkedin": "ts-node src/scripts/test-linkedin.ts",
     "introduce": "ts-node src/index.ts --introduce",
-    "test:commentary": "ts-node src/index.ts --commentary"
+    "test:commentary": "ts-node src/index.ts --commentary",
+    "test:explainer": "ts-node src/index.ts --explainer",
+    "test:shapes": "ts-node src/scripts/test-shapes.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.20.0",
     "@supabase/supabase-js": "^2.39.0",
     "axios": "^1.6.0",
+    "cheerio": "^1.2.0",
     "dotenv": "^16.3.1",
     "fast-xml-parser": "^5.7.1",
     "groq-sdk": "^1.1.2",

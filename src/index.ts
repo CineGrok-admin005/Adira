@@ -3,14 +3,17 @@ dotenv.config();
 
 import { fetchGrowthData, fetchDemoFilterDiagnostic } from './supabase/queries';
 import { sanitizeForPublic } from './privacy/sanitize';
-import type { MilestoneEvent, VerifiedStory } from './types';
+import type { MilestoneEvent, VerifiedStory, ExplainerPillar } from './types';
 import { generatePosts } from './claude/generatePosts';
-import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft } from './telegram/sendDraft';
+import { sendDraftToFounder, sendIntroductionToFounder, sendCommentaryDraft, sendExplainerDraft } from './telegram/sendDraft';
+import { notifyFailure } from './telegram/notifyFailure';
 import { getIntroductionPosts } from './aria/introduce';
 import { fetchYouTubeVideos } from './news/fetchYouTube';
 import { fetchNews } from './news/fetchNewsData';
 import { crossVerify } from './news/crossVerify';
 import { generateCommentary } from './news/generateCommentary';
+import { generateExplainer } from './explainer/generateExplainer';
+import { EXPLAINER_TOPICS } from './explainer/topics';
 import { generateAdiraImage } from './image/generateImage';
 import { saveImageCache, loadImageCache, clearImageCache, bufferToBase64, base64ToBuffer } from './image/imageCache';
 import { startScheduler } from './scheduler';
@@ -46,6 +49,15 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
     } else {
       console.log('🎬 CineGrok Growth Agent starting...');
       console.log(`   Auto-post: ${AUTO_POST ? '✅ ON' : '📋 OFF (Telegram review only)'}`);
+    }
+
+    if (!dryRun) {
+      const { hasPostedRecently, purgeExpiredBacklog } = await import('./supabase/queue');
+      if (await hasPostedRecently('MILESTONE')) {
+        console.log('💤 Milestone already posted recently — skipping (duplicate-trigger guard).');
+        return;
+      }
+      await purgeExpiredBacklog();
     }
 
     // ── STEP A: Demo filter diagnostic (dry-run only) ──
@@ -178,7 +190,21 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
       type: 'MILESTONE',
       status: 'posted',
       priority: 0,
-      data: { signature: milestoneSignature(milestone), mtype: milestone.type, message: milestone.message },
+      // `signature` is load-bearing (the 30-day dedup above reads it); `post` is the archive.
+      data: {
+        signature: milestoneSignature(milestone),
+        mtype: milestone.type,
+        message: milestone.message,
+        post: {
+          linkedin: posts.linkedin,
+          instagram: posts.instagram,
+          twitter: posts.twitter,
+          linkedinChars: posts.linkedin.length,
+          imageStyle: posts.imageStyle,
+          emotion: posts.emotion,
+          audience: posts.audience,
+        },
+      },
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
@@ -200,6 +226,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
 
   } catch (error) {
     console.error('❌ Growth Agent error:', error);
+    await notifyFailure('Growth report (Type 1)', error);
   }
 }
 
@@ -216,8 +243,15 @@ export async function runIntroduction(): Promise<void> {
 
 export async function runCommentaryAgent(): Promise<void> {
   try {
+    const { pushToBacklog, getNextFromBacklog, markBacklogItemPosted, hasPostedRecently, purgeExpiredBacklog } = await import('./supabase/queue');
+
+    if (await hasPostedRecently('COMMENTARY')) {
+      console.log('💤 Commentary already posted recently — skipping (duplicate-trigger guard).');
+      return;
+    }
+    await purgeExpiredBacklog();
+
     console.log('📰 Type 2 — Fetching YouTube videos and news...');
-    const { pushToBacklog, getNextFromBacklog, markBacklogItemPosted } = await import('./supabase/queue');
 
     const [videos, news] = await Promise.all([
       fetchYouTubeVideos(),
@@ -327,8 +361,22 @@ export async function runCommentaryAgent(): Promise<void> {
     if (backlogId) {
       await markBacklogItemPosted(backlogId);
     } else {
-      // Organic story — push as 'posted' with title for topic-based deduplication
-      await pushToBacklog('COMMENTARY', 0, { youtubeVideo: { url: post.sourceStory.url, title: post.sourceStory.title } }, 1);
+      // Organic story — push as 'posted' with title for topic-based deduplication.
+      // `youtubeVideo` keys are load-bearing (the 24h dedup at the top of this function reads
+      // them); `post` is additive — the archive that lets us actually review what ADIRA wrote.
+      await pushToBacklog('COMMENTARY', 0, {
+        youtubeVideo: { url: post.sourceStory.url, title: post.sourceStory.title },
+        post: {
+          linkedin: post.linkedin,
+          instagram: post.instagram,
+          tweetBrief: post.tweetBrief,
+          linkedinChars: post.linkedin.length,
+          shapeName: post.shapeName,
+          imageStyle: post.imageStyle,
+          emotion: post.emotion,
+          audience: post.audience,
+        },
+      }, 1);
       // Immediately mark it posted
       const { data: inserted } = await (await import('./supabase/client')).serviceClient
         .from('content_backlog')
@@ -344,6 +392,121 @@ export async function runCommentaryAgent(): Promise<void> {
     console.log('✅ Type 2 commentary completed!');
   } catch (error) {
     console.error('❌ Commentary Agent error:', error);
+    await notifyFailure('Commentary (Type 2)', error);
+  }
+}
+
+// Picks the next Explainer topic: excludes the immediately-previous pillar and anything posted
+// in the last ~90 days; drops the pillar constraint, then falls back to least-recently-used
+// (never-used first), if the bank is exhausted under those constraints. Deterministic per IST
+// calendar day (not random per call) so a pre-warm run and the real run later that day always
+// pick the same topic — otherwise a cached pre-warmed image could mismatch the real post's topic.
+async function pickExplainerSeed(): Promise<{ pillar: ExplainerPillar; topic: string }> {
+  const { serviceClient } = await import('./supabase/client');
+  const { data: rows } = await serviceClient
+    .from('content_backlog')
+    .select('data, created_at')
+    .eq('type', 'EXPLAINER')
+    .eq('status', 'posted')
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  const posted = (rows || []) as { data: { pillar?: string; topic?: string }; created_at: string }[];
+  const lastPillar = posted[0]?.data?.pillar;
+  const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  const usedWithin90d = new Set(
+    posted.filter(r => new Date(r.created_at).getTime() >= ninetyDaysAgo).map(r => r.data?.topic).filter(Boolean)
+  );
+
+  let candidates = EXPLAINER_TOPICS.filter(t => !usedWithin90d.has(t.topic) && t.pillar !== lastPillar);
+  if (candidates.length === 0) candidates = EXPLAINER_TOPICS.filter(t => !usedWithin90d.has(t.topic));
+
+  if (candidates.length === 0) {
+    // Bank exhausted within 90 days for every topic — fall back to least-recently-used (never-used first)
+    const lastUsedAt = new Map<string, number>();
+    for (const r of posted) {
+      const topic = r.data?.topic;
+      if (topic && !lastUsedAt.has(topic)) lastUsedAt.set(topic, new Date(r.created_at).getTime());
+    }
+    candidates = [...EXPLAINER_TOPICS].sort((a, b) => (lastUsedAt.get(a.topic) ?? 0) - (lastUsedAt.get(b.topic) ?? 0));
+    return candidates[0];
+  }
+
+  const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
+  let hash = 0;
+  for (const ch of todayIST) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return candidates[hash % candidates.length];
+}
+
+export async function runExplainerAgent(): Promise<void> {
+  try {
+    const { pushToBacklog, markBacklogItemPosted, hasPostedRecently } = await import('./supabase/queue');
+
+    if (await hasPostedRecently('EXPLAINER')) {
+      console.log('💤 Explainer already posted recently — skipping (duplicate-trigger guard).');
+      return;
+    }
+
+    console.log('📚 Type 3 — Explainer post starting...');
+    const seed = await pickExplainerSeed();
+    console.log(`   Pillar: ${seed.pillar} | Topic: ${seed.topic}`);
+
+    console.log('✍️  ADIRA is writing the explainer post...');
+    const post = await generateExplainer(seed);
+    console.log(`   Audience: ${post.audience} | Image style: ${post.imageStyle}`);
+
+    const cached = loadImageCache('type3');
+    if (cached) {
+      post.imageBuffer = base64ToBuffer(cached.imageBase64);
+      clearImageCache('type3');
+    } else {
+      const speechBubble = post.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+      post.imageBuffer = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion, speechBubble) || undefined;
+    }
+
+    await checkLinkedInTokenExpiry(async (warning) => {
+      const { bot } = await import('./telegram/bot');
+      await bot.sendMessage(process.env.TELEGRAM_CHAT_ID!, warning);
+    });
+
+    console.log('📱 Sending explainer draft to Telegram...');
+    await sendExplainerDraft(post);
+
+    // Dedup ledger only — Explainer never queues unposted content, it generates fresh every run.
+    // `pillar`/`topic` are load-bearing (pickExplainerSeed reads them); `post` is the archive.
+    await pushToBacklog('EXPLAINER', 0, {
+      pillar: seed.pillar,
+      topic: seed.topic,
+      post: {
+        linkedin: post.linkedin,
+        tweetBrief: post.tweetBrief,
+        linkedinChars: post.linkedin.length,
+        shapeName: post.shapeName,
+        imageStyle: post.imageStyle,
+        emotion: post.emotion,
+        audience: post.audience,
+      },
+    }, 120);
+    const { data: inserted } = await (await import('./supabase/client')).serviceClient
+      .from('content_backlog')
+      .select('id')
+      .eq('type', 'EXPLAINER')
+      .eq('status', 'queued')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+    if (inserted?.id) await markBacklogItemPosted(inserted.id);
+
+    if (AUTO_POST) {
+      console.log('🚀 AUTO_POST=true — posting explainer to LinkedIn...');
+      try { await postToLinkedIn(post.linkedin, post.imageBuffer); }
+      catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
+    }
+
+    console.log('✅ Type 3 explainer completed!');
+  } catch (error) {
+    console.error('❌ Explainer Agent error:', error);
+    await notifyFailure('Explainer (Type 3)', error);
   }
 }
 
@@ -384,14 +547,32 @@ export async function preWarmType2(): Promise<void> {
   } catch (err) { console.error('❌ Pre-warm Type 2 failed:', (err as Error).message); }
 }
 
+// Pre-warm Type 3: pick the day's Explainer topic, generate image 30 min before the explainer slot
+export async function preWarmType3(): Promise<void> {
+  try {
+    console.log('⏰ Pre-warming Type 3 image...');
+    const seed = await pickExplainerSeed();
+    const post = await generateExplainer(seed);
+    const speechBubble = post.imagePrompt.match(/SPEECH BUBBLE:\s*(.+)/i)?.[1]?.trim();
+    const buf = await generateAdiraImage(post.imagePrompt, post.imageStyle, post.emotion, speechBubble);
+    if (buf) {
+      saveImageCache('type3', { generatedAt: new Date().toISOString(), imageBase64: bufferToBase64(buf), prompt: post.imagePrompt, style: post.imageStyle, emotion: post.emotion, speechBubble });
+      console.log('✅ Type 3 image pre-warmed and cached.');
+    }
+  } catch (err) { console.error('❌ Pre-warm Type 3 failed:', (err as Error).message); }
+}
+
 const isTestRun        = process.argv.includes('--test');
 const isDryRun         = process.argv.includes('--dry-run');
 const isIntroduce      = process.argv.includes('--introduce');
 const isCommentaryTest = process.argv.includes('--commentary');
+const isExplainerTest  = process.argv.includes('--explainer');
 const isRunGrowth      = process.argv.includes('--run-growth');      // GitHub Actions trigger
 const isRunCommentary  = process.argv.includes('--run-commentary');   // GitHub Actions trigger
+const isRunExplainer   = process.argv.includes('--run-explainer');    // GitHub Actions trigger
 const isPreWarm1       = process.argv.includes('--prewarm-growth');
 const isPreWarm2       = process.argv.includes('--prewarm-commentary');
+const isPreWarm3       = process.argv.includes('--prewarm-explainer');
 
 if (isIntroduce) {
   runIntroduction();
@@ -400,19 +581,27 @@ if (isIntroduce) {
 } else if (isCommentaryTest) {
   console.log('🧪 TEST MODE — Running Type 2 commentary once, will send to Telegram...');
   runCommentaryAgent();
+} else if (isExplainerTest) {
+  console.log('🧪 TEST MODE — Running Type 3 explainer once, will send to Telegram...');
+  runExplainerAgent();
 } else if (isTestRun) {
   console.log('🧪 TEST MODE — Running agent once, will send to Telegram...');
   runGrowthAgent(false);
 } else if (isRunGrowth) {
-  // Called by GitHub Actions at 8 AM IST — runs once and exits
+  // Called by GitHub Actions at ~8 AM IST — runs once and exits
   runGrowthAgent(false);
 } else if (isRunCommentary) {
-  // Called by GitHub Actions at 1 PM and 7 PM IST — runs once and exits
+  // Called by GitHub Actions at ~12 PM and ~8 PM IST — runs once and exits
   runCommentaryAgent();
+} else if (isRunExplainer) {
+  // Called by GitHub Actions at ~4 PM IST — runs once and exits
+  runExplainerAgent();
 } else if (isPreWarm1) {
   preWarmType1();
 } else if (isPreWarm2) {
   preWarmType2();
+} else if (isPreWarm3) {
+  preWarmType3();
 } else {
   // Fallback: Railway persistent mode with node-cron scheduler
   startScheduler();

@@ -8,7 +8,7 @@ const supabaseUrl = process.env.SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-export async function pushToBacklog(type: 'MILESTONE' | 'COMMENTARY', priority: number, data: any, ttlDays: number): Promise<void> {
+export async function pushToBacklog(type: 'MILESTONE' | 'COMMENTARY' | 'EXPLAINER', priority: number, data: any, ttlDays: number): Promise<void> {
   const expiresAt = new Date();
   expiresAt.setDate(expiresAt.getDate() + ttlDays);
 
@@ -29,7 +29,7 @@ export async function pushToBacklog(type: 'MILESTONE' | 'COMMENTARY', priority: 
   }
 }
 
-export async function getNextFromBacklog(type: 'MILESTONE' | 'COMMENTARY'): Promise<BacklogItem | null> {
+export async function getNextFromBacklog(type: 'MILESTONE' | 'COMMENTARY' | 'EXPLAINER'): Promise<BacklogItem | null> {
   // First, mark expired items as superseded or expired (if we want, or just filter them out)
   const now = new Date().toISOString();
 
@@ -61,6 +61,44 @@ export async function markBacklogItemPosted(id: string): Promise<void> {
   if (error) {
     console.error('❌ Failed to mark backlog item as posted:', error.message);
   }
+}
+
+// Guards against double-posting when both an external trigger and GitHub's native (often
+// delayed) `schedule:` backup fire for the same slot. Uses a rolling window rather than a
+// calendar-day check because Commentary has two legitimate slots/day (~8h apart) — a 6h window
+// safely catches a same-slot duplicate (worst observed schedule-trigger delay so far: ~6.1h)
+// without blocking the next real slot. Fails OPEN (returns false) on a query error — a rare
+// duplicate post is a smaller problem than silently skipping a real one.
+export async function hasPostedRecently(type: 'MILESTONE' | 'COMMENTARY' | 'EXPLAINER', hours = 6): Promise<boolean> {
+  const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
+  const { count, error } = await supabase
+    .from('content_backlog')
+    .select('*', { count: 'exact', head: true })
+    .eq('type', type)
+    .eq('status', 'posted')
+    .gte('created_at', since);
+
+  if (error) {
+    console.error('❌ Failed to check hasPostedRecently:', error.message);
+    return false;
+  }
+  return (count ?? 0) > 0;
+}
+
+// The queue only ever grew. Each Commentary run pushes up to 5 candidates and consumes one,
+// and getNextFromBacklog filters on `expires_at` — so expired rows became permanently
+// unreachable but were never deleted. By 2026-08-07 that was 613 dead rows out of 862.
+// Sweep them on every run. Only touches 'queued' rows: 'posted' rows are the dedup ledger
+// (and now the post archive) and must survive their own expiry.
+export async function purgeExpiredBacklog(): Promise<void> {
+  const { error, count } = await supabase
+    .from('content_backlog')
+    .delete({ count: 'exact' })
+    .eq('status', 'queued')
+    .lt('expires_at', new Date().toISOString());
+
+  if (error) console.error('❌ Failed to purge expired backlog rows:', error.message);
+  else if ((count ?? 0) > 0) console.log(`🧹 Purged ${count} expired backlog item(s).`);
 }
 
 export async function supersedeMilestones(): Promise<void> {

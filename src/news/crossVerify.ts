@@ -11,7 +11,7 @@ const STOP_WORDS = new Set([
   'New', 'Big', 'First', 'Latest', 'Best', 'Top', 'All', 'Now', 'Here',
 ]);
 
-function extractProperNouns(title: string): string[] {
+export function extractProperNouns(title: string): string[] {
   // Extract capitalised words/sequences that aren't stop words
   const tokens = title
     .replace(/[^a-zA-Z0-9\s]/g, ' ')

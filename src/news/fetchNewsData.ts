@@ -14,10 +14,14 @@ const API_URL = 'https://newsdata.io/api/1/latest';
 const CACHE_PATH = path.join(process.cwd(), 'data', 'newsdata-cache.json');
 const CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2h — conserve daily credits
 
-// A couple of targeted queries (each = 1 credit). Keep it small.
+// Targeted queries (each = 1 credit). 5 queries × 2h cache ≈ ≤60 credits/day — far under the
+// 200/day free limit, and the topic spread surfaces more specific, less generic stories.
 const QUERIES = [
   'Indian cinema OR filmmaker OR "film industry"',
   'OTT India OR Netflix India OR "Prime Video" OR "film festival" OR "indie film"',
+  'regional cinema India OR Tamil OR Telugu OR Malayalam OR Marathi film',
+  '"debut director" OR "first film" OR "newcomer" OR "emerging filmmaker" India',
+  'NFDC OR "film grant" OR "film fund" OR MAMI OR IFFI OR "festival selection" India',
 ];
 
 interface NewsDataResult {
