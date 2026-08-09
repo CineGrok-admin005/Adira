@@ -105,26 +105,15 @@ export async function postToLinkedIn(text: string, imageBuffer?: Buffer): Promis
     );
     console.log('✅ Posted to LinkedIn (personal profile: Sivaji Raja)');
 
-    // Drop the cinegrok.in link in the FIRST COMMENT, not the post body —
-    // LinkedIn down-ranks posts with outbound links in the body. Non-fatal if it fails.
-    const postUrn: string | undefined =
-      (postRes.headers['x-restli-id'] as string) || postRes.data?.id;
-    if (postUrn) {
-      try {
-        await axios.post(
-          `https://api.linkedin.com/v2/socialActions/${encodeURIComponent(postUrn)}/comments`,
-          {
-            actor: `urn:li:person:${personId}`,
-            message: { text: 'More at https://cinegrok.in' },
-          },
-          { headers }
-        );
-        console.log('💬 Added cinegrok.in as the first comment.');
-      } catch (commentErr) {
-        const ce = commentErr as AxiosError;
-        console.warn('⚠️  Could not add first comment (post still published):', ce.message);
-      }
-    }
+    // NO LINK — not in the body, and not in the first comment either.
+    //
+    // This used to auto-comment "More at https://cinegrok.in" on every post. That was the
+    // standard workaround for LinkedIn down-ranking outbound links in the body, and it no
+    // longer works: the first-comment trick is detected and carries the same penalty. So the
+    // post paid the cost of a link while ADIRA's own prompt was being told links were banned.
+    //
+    // cinegrok.in belongs in the profile, not the post. The post earns attention; the profile
+    // is what converts it. Removed 2026-08-09.
   } catch (err: unknown) {
     const axiosErr = err as AxiosError;
     if (axiosErr.response?.status === 401) {
