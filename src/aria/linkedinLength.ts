@@ -75,7 +75,8 @@ export async function expandLinkedInIfShort(
 
   try {
     const response = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      // Cheap model: expanding an existing draft is repair, not authorship. See qualityGate.ts.
+      model: 'llama-3.1-8b-instant',
       max_completion_tokens: 700,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },

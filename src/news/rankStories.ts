@@ -8,12 +8,25 @@ import { VerifiedStory } from '../types';
 const HARD_SKIP = [
   /\b(song|music|lyric(al)?|audio launch|first single|jukebox|teaser|trailer|\bOST\b|promo)\b/i,
   /\b(out now|watch now|streaming now|in cinemas|in theat(re|er)s|book tickets)\b/i,
+  // Box office. The content plan says "Not gossip. Not box office." — there was no pattern
+  // for it, which is how a ₹10,925 crore gross and a "50,000 screens" claim both got posted.
+  // Unambiguous terms only: bare "crore" also appears in funding news, which we WANT.
+  /\b(box.?office|worldwide gross|opening day|weekend collection|day \d+ (collection|nett)|footfalls?|occupancy|screen count)\b/i,
 ];
 
 // Off-beat noise — dropped UNLESS the story also carries a real industry-decision signal
 // (e.g. "festival lineup revealed amid controversy" should survive on the festival angle).
 const SOFT_SKIP = [
   /\b(gossip|dating|girlfriend|boyfriend|wedding|marriage|divorce|spotted|airport|birthday|vacation|cute|adorable)\b/i,
+  // Earnings language, redeemable: "₹50 crore NFDC fund" survives on the funding BOOST,
+  // "₹10,925 crore worldwide gross" does not.
+  /\b(crore|collections?|earnings|grosses|record[- ]?breaking)\b/i,
+  // Personal/family content. "Suriya & Jyotika share on their kids keeping them grounded"
+  // passed every other filter — it is celebrity human-interest, not an industry decision.
+  /\b(kids?|children|family|wife|husband|son|daughter|parents?|personal life|grounded|home life)\b/i,
+  // The YouTube channels post in Hindi, so English-only patterns miss half the noise.
+  // (Largely moot once YouTube is dropped as a source, but free to keep for Hindi headlines.)
+  /(स्क्रीन|कलेक्शन|बॉक्स\s*ऑफिस|रिकॉर्ड|कमाई|टूटेगा)/,
   /\b(politic|election|minister|\bMP\b|\bMLA\b|party|vote|rally|protest)\b/i,
   /\b(controvers|slam|troll|backlash|feud|fight|arrest|\bFIR\b|legal notice|defam)\b/i,
   /\b(horoscope|fashion|red carpet|filmfare|award show|recap|throwback)\b/i,
@@ -57,7 +70,16 @@ export function rankStories(stories: VerifiedStory[]): VerifiedStory[] {
   });
 
   const kept = scored.filter(x => !x.drop);
-  // Never return empty — if everything was filtered, fall back to the original scored set.
-  const pool = kept.length > 0 ? kept : scored;
-  return pool.sort((a, b) => b.score - a.score).map(x => x.s);
+
+  // Return EMPTY when everything was filtered. This used to fall back to the unfiltered set,
+  // which silently defeated the whole filter on exactly the days it mattered most — a day of
+  // nothing but gossip and box office would publish gossip and box office. An empty pool makes
+  // the caller emit NO_WORTHWHILE_STORY and post nothing, which is the correct outcome:
+  // the content plan's rule is that silence beats filler.
+  if (kept.length === 0) {
+    console.log(`   🚫 rankStories: all ${stories.length} candidate(s) failed the beat filter — nothing worth posting.`);
+    return [];
+  }
+
+  return kept.sort((a, b) => b.score - a.score).map(x => x.s);
 }

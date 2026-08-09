@@ -56,7 +56,10 @@ export async function enforceLinkedInQuality(
 
   try {
     const response = await client.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
+      // Cheap model on purpose: this is "remove a banned phrase, cut a question" — mechanical
+      // repair, not writing. 70B is reserved for the post itself. Saves ~3-4k tokens per
+      // retry against the 100k/day free-tier cap, and returns faster.
+      model: 'llama-3.1-8b-instant',
       max_completion_tokens: 900,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },
