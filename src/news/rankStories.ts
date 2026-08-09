@@ -8,11 +8,17 @@ import { VerifiedStory } from '../types';
 const HARD_SKIP = [
   /\b(song|music|lyric(al)?|audio launch|first single|jukebox|teaser|trailer|\bOST\b|promo)\b/i,
   /\b(out now|watch now|streaming now|in cinemas|in theat(re|er)s|book tickets)\b/i,
-  // Box office. The content plan says "Not gossip. Not box office." — there was no pattern
-  // for it, which is how a ₹10,925 crore gross and a "50,000 screens" claim both got posted.
-  // Unambiguous terms only: bare "crore" also appears in funding news, which we WANT.
-  /\b(box.?office|worldwide gross|opening day|weekend collection|day \d+ (collection|nett)|footfalls?|occupancy|screen count)\b/i,
 ];
+
+// The real dividing line is not the TOPIC, it is the SUBJECT: "the ones becoming — not the
+// ones who already made it" (characterCard.ts). Box office proves this. A blockbuster's
+// ₹10,925 crore worldwide gross is noise to someone with nothing on their reel. An
+// independent film clearing ₹50 crore on a ₹2 crore budget is the most on-beat story we can
+// run — it is evidence that people like them can win. Same topic, opposite value.
+//
+// So earnings and interviews live in SOFT_SKIP: dropped by default, RESCUED when the story
+// also carries an emerging/independent signal from BOOST. Only marketing assets — songs,
+// trailers, promos — are unconditional, because those are never a story about anyone.
 
 // Off-beat noise — dropped UNLESS the story also carries a real industry-decision signal
 // (e.g. "festival lineup revealed amid controversy" should survive on the festival angle).
@@ -20,10 +26,17 @@ const SOFT_SKIP = [
   /\b(gossip|dating|girlfriend|boyfriend|wedding|marriage|divorce|spotted|airport|birthday|vacation|cute|adorable)\b/i,
   // Earnings language, redeemable: "₹50 crore NFDC fund" survives on the funding BOOST,
   // "₹10,925 crore worldwide gross" does not.
+  /\b(box.?office|worldwide gross|opening day|weekend collection|day \d+ (collection|nett)|footfalls?|occupancy|screen count)\b/i,
   /\b(crore|collections?|earnings|grosses|record[- ]?breaking)\b/i,
   // Personal/family content. "Suriya & Jyotika share on their kids keeping them grounded"
   // passed every other filter — it is celebrity human-interest, not an industry decision.
   /\b(kids?|children|family|wife|husband|son|daughter|parents?|personal life|grounded|home life)\b/i,
+  // Retrospective career interviews. Same rule as box office — the format is fine, the
+  // subject decides. "Ravi Basrur on his journey composing for KGF" is a made-it looking
+  // back; "first-time director opens up on her ₹5 lakh debut" is rescued by the debut boost.
+  // Deliberately narrower than SOFT_PENALTY below: "says" and "shares" stay a nudge, not a
+  // drop, because they appear in ordinary industry reporting too.
+  /\b(on (his|her) (journey|career|struggle|success)|looks? back|recalls?|reflects? on|reminisces|success story|rise to fame)\b/i,
   // The YouTube channels post in Hindi, so English-only patterns miss half the noise.
   // (Largely moot once YouTube is dropped as a source, but free to keep for Hindi headlines.)
   /(स्क्रीन|कलेक्शन|बॉक्स\s*ऑफिस|रिकॉर्ड|कमाई|टूटेगा)/,
@@ -37,6 +50,10 @@ const BOOST = [
   /\b(greenlit|greenlight|commission|slate|line[- ]?up|selection|selected|in competition|premiere)\b/i,
   /\b(NFDC|grant|fund(ing)?|scholarship|fellowship|residency|film bazaar)\b/i,
   /\b(debut|first film|first feature|newcomer|emerging|breakout|discovered)\b/i,
+  // The rescue signals. These are what turn an off-beat topic back into our story: an
+  // independent film's box office IS the beat, a first-time director's interview IS the beat.
+  /\b(independent|indie|low[- ]?budget|micro[- ]?budget|no[- ]?budget|shoestring|self[- ]?fund|crowdfund|made for (just |only )?[₹$])\b/i,
+  /\b(first[- ]?time|debutant|student film|short film|regional cinema|small(er)? film|underdog|against the odds)\b/i,
   /\b(acqui(re|red|sition)|picked up|streaming rights|OTT rights|original (series|film))\b/i,
   /\b(festival|MAMI|IFFI|IFFK|Cannes|Sundance|Berlinale|Venice|TIFF|Toronto)\b/i,
   /\b(production house|studio|backed by|co[- ]?produce|producer)\b/i,
