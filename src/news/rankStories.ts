@@ -56,6 +56,13 @@ const BOOST = [
   /\b(first[- ]?time|debutant|student film|short film|regional cinema|small(er)? film|underdog|against the odds)\b/i,
   /\b(acqui(re|red|sition)|picked up|streaming rights|OTT rights|original (series|film))\b/i,
   /\b(festival|MAMI|IFFI|IFFK|Cannes|Sundance|Berlinale|Venice|TIFF|Toronto)\b/i,
+];
+
+// WEAK signals: good for RANKING, useless for RESCUE. "producer" appears in nearly every
+// film news item — it rescued the Ramayana box-office story straight past the beat filter
+// on 2026-08-09, because SOFT_SKIP was redeemed by ANY boost. These now only move a story
+// up the order; they can never bring a dropped one back.
+const WEAK_BOOST = [
   /\b(production house|studio|backed by|co[- ]?produce|producer)\b/i,
   /\b(casting call|open call|audition|submission|apply now)\b/i,
 ];
@@ -77,12 +84,17 @@ export function rankStories(stories: VerifiedStory[]): VerifiedStory[] {
     const title = s.youtubeVideo.title || '';
     const blob = blobOf(s);
     const boosts = BOOST.filter(p => p.test(blob)).length;
+    const weak = WEAK_BOOST.filter(p => p.test(blob)).length;
     const hardSkip = HARD_SKIP.some(p => p.test(title));
     const softSkip = SOFT_SKIP.some(p => p.test(title));
     const softPenalty = SOFT_PENALTY.test(title) ? 1 : 0;
-    const score = s.matchScore + boosts * 2 - softPenalty;
-    // Always drop pure marketing; drop off-beat noise only when nothing redeems it.
-    const drop = hardSkip || (softSkip && boosts === 0);
+    const score = s.matchScore + boosts * 2 + weak * 0.5 - softPenalty;
+
+    // Rescue must come from the TITLE, not the blob. The blob includes matched news
+    // descriptions, so an unrelated article mentioning "debut" could rescue a box-office
+    // story it has nothing to do with — which is how the Ramayana piece survived twice.
+    const rescued = BOOST.some(p => p.test(title));
+    const drop = hardSkip || (softSkip && !rescued);
     return { s, score, drop };
   });
 

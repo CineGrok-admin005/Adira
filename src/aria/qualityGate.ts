@@ -31,6 +31,32 @@ export function capHashtags(text: string, max = MAX_HASHTAGS): string {
     .trim();
 }
 
+// Every significant figure in the post must appear in the source. A reporter's whole value
+// is that she checked; on 2026-08-09 ADIRA published "50,000 screens overseas" — a quarter of
+// every cinema screen on earth — from a Hindi clickbait title that contained no number at all.
+// Nothing in the pipeline could tell an invented figure from a reported one.
+//
+// Only figures that carry weight: 3+ digits, or any number attached to crore/lakh/cr/%/₹/$.
+// Years and small counts are ignored — too noisy, too rarely load-bearing.
+export function findUnsourcedNumbers(post: string, source: string): string[] {
+  const norm = (s: string) => s.replace(/[,\s]/g, '');
+  const haystack = norm(source);
+
+  const matches = post.match(/(?:[₹$]\s?)?\d[\d,]*(?:\.\d+)?\s*(?:crore|cr\b|lakh|million|billion|%)?/gi) ?? [];
+  const unsourced = new Set<string>();
+
+  for (const raw of matches) {
+    const digits = raw.replace(/[^\d.]/g, '');
+    if (!digits) continue;
+    const plain = norm(digits);
+    const significant = plain.replace('.', '').length >= 3 || /crore|cr\b|lakh|million|billion|%|[₹$]/i.test(raw);
+    if (!significant) continue;
+    if (/^(19|20)\d{2}$/.test(plain)) continue; // years
+    if (!haystack.includes(plain)) unsourced.add(raw.trim());
+  }
+  return [...unsourced];
+}
+
 function inspect(text: string): string[] {
   const violations: string[] = [];
   const banned = findBannedPhrases(text);
@@ -46,6 +72,18 @@ export async function enforceLinkedInQuality(
   storyContext: string,
 ): Promise<QualityResult> {
   const capped = capHashtags(text);
+
+  // Unsourced figures are a HARD reject — no rewrite. A rewrite would just launder the
+  // invented number into different wording; the only safe response is to publish nothing.
+  if (storyContext) {
+    const invented = findUnsourcedNumbers(capped, storyContext);
+    if (invented.length > 0) {
+      const v = [`unsourced figure(s) not present in the source: ${invented.join(', ')}`];
+      console.error(`   ❌ Quality gate: ${v[0]} — REJECTED, not rewritten.`);
+      return { text: capped, passed: false, violations: v, rewritten: false };
+    }
+  }
+
   const violations = inspect(capped);
 
   if (violations.length === 0) {
@@ -93,6 +131,14 @@ Output ONLY the rewritten post — no labels, no preamble, no quotes around it.`
 
     const rewritten = choice?.message?.content?.trim();
     if (!rewritten) {
+      return { text: capped, passed: false, violations, rewritten: true };
+    }
+
+    // The repair model rewrites to fix a violation, not to re-length the post — but on
+    // 2026-08-09 it took a 1,782-char post down to 962, undoing the expansion that had just
+    // run and dropping it below the floor. A repair that guts the post is not a repair.
+    if (rewritten.length < capped.length * 0.85) {
+      console.warn(`   ⚠️  Rewrite shrank the post ${capped.length} → ${rewritten.length} chars — discarding it.`);
       return { text: capped, passed: false, violations, rewritten: true };
     }
 
