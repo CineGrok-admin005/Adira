@@ -242,7 +242,20 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
   const instagramMatch  = text.match(/\[INSTAGRAM\]\s*([\s\S]*?)(?=\[LINKEDIN\])/);
   // See the note in generateExplainer: the model sometimes opens the section with
   // [LINKEDIN_LENGTH: ...] instead of [LINKEDIN]. Accept either as the opener.
-  const linkedinMatch   = text.match(/\[LINKEDIN(?:_LENGTH)?[^\]]*\]\s*(?:\[LINKEDIN_LENGTH:[^\]]*\]\s*)?([\s\S]*?)(?=\[TWEET_BRIEF\])/);
+  let linkedinMatch     = text.match(/\[LINKEDIN(?:_LENGTH)?[^\]]*\]\s*(?:\[LINKEDIN_LENGTH:[^\]]*\]\s*)?([\s\S]*?)(?=\[TWEET_BRIEF\])/);
+
+  // Last-resort positional fallback. Observed 2026-08-09: on two of three shapes the model
+  // omitted the [LINKEDIN] header altogether — not swapped for [LINKEDIN_LENGTH], just gone —
+  // while still emitting [INSTAGRAM] and [TWEET_BRIEF] around it. The section is right there
+  // between them; only the label is missing, and throwing away a good post over a missing
+  // label is the worst possible trade. Take what sits between the two known markers.
+  if (!linkedinMatch?.[1]?.trim()) {
+    const positional = text.match(/\[INSTAGRAM\][\s\S]*?\n\s*\n([\s\S]*?)(?=\[TWEET_BRIEF\])/);
+    if (positional?.[1]?.trim()) {
+      console.warn('   ⚠️  [LINKEDIN] header missing — recovered the section positionally.');
+      linkedinMatch = positional;
+    }
+  }
   // Read the declaration from the whole response, in any form the model emits it.
   const declaredLengthTag = parseLinkedInLengthTag(text);
   const tweetBriefMatch = text.match(/\[TWEET_BRIEF\]\s*([\s\S]*?)(?=\[TONE\])/);

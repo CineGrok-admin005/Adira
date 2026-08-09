@@ -118,6 +118,8 @@ Where a banned phrase appears, do not swap in a synonym — the phrasing is bann
 
 If there are too many questions, keep at most the single best one and turn the others into statements. A post that ends on a flat statement is stronger than one that asks the reader to do homework.
 
+KEEP THE POST THE SAME LENGTH. It is currently ${capped.length} characters and your rewrite must be within about 100 characters of that. You are fixing specific violations, not editing it down — every paragraph that does not contain a violation should come back essentially unchanged. A shorter post will be discarded and the whole thing thrown away.
+
 Output ONLY the rewritten post — no labels, no preamble, no quotes around it.`,
         },
       ],
