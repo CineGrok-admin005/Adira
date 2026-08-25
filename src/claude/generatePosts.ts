@@ -1,6 +1,7 @@
 // TEMPORARY: Using Groq (free) while Anthropic credits are topped up.
 // To switch back to Claude: swap Groq import/client with Anthropic SDK.
 // The prompt structure (system + user) works identically on both.
+import { MODELS } from '../llm/models';
 import Groq from 'groq-sdk';
 import { MilestoneEvent, GeneratedPosts } from '../types';
 import { ADIRA_SYSTEM_PROMPT } from '../aria/characterCard';
@@ -199,7 +200,7 @@ EMOTIONAL ANGLE: [what feeling should this carousel leave the reader with — fe
 SUGGESTED HOOK FOR SLIDE 1: [one sharp, specific opening line — the sharpest version of the point]`;
 
   const response = await client.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: MODELS.WRITER,
     max_completion_tokens: 4500, // raised from 2500 — input is ~5-6.5k tokens, keeps total under Groq's 12,000 TPM free-tier cap
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },

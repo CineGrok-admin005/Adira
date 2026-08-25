@@ -1,3 +1,4 @@
+import { MODELS } from '../llm/models';
 import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -30,22 +31,22 @@ export async function generateCommentary(stories: VerifiedStory[], shapeOverride
   // Drop off-beat junk (gossip/music/politics) and float real industry-decision stories to the
   // top before the model picks. Falls back to the raw list if filtering empties it.
   const pool = rankStories(stories);
-  const candidates = pool.slice(0, 6);
+  const candidates = pool.slice(0, 3);
 
   // Budget note: Groq free tier caps requests at 12,000 tokens/min (input + reserved output).
   // So we keep the candidate list lean and put the real depth (full article text) only on the
   // top few. This lands the request around ~7-8k tokens — comfortably under the cap.
-  const ARTICLE_STORIES = 3;   // fetch the full article body for only the top 3 candidates
-  const ARTICLE_CHARS = 700;   // chars of article body injected into the prompt per story
+  const ARTICLE_STORIES = 1;   // full article body for the top candidate only
+  const ARTICLE_CHARS = 500;   // chars of article body injected per story
 
   const storyBlocks = await Promise.all(
     candidates.map(async (s, i) => {
       const v = s.youtubeVideo;
-      const desc = clean(v.description).slice(0, 400);
+      const desc = clean(v.description).slice(0, 200);
       const coverage = s.matchingNews
-        .slice(0, 2)
+        .slice(0, 1)
         .map(n => {
-          const nd = clean(n.description).slice(0, 250);
+          const nd = clean(n.description).slice(0, 150);
           return `   • ${n.source || 'Press'}: "${clean(n.title)}"${nd ? ` — ${nd}` : ''}`;
         })
         .join('\n');
@@ -222,8 +223,8 @@ EMOTIONAL ANGLE: [what feeling should this carousel leave — felt seen / learne
 SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest version of the point]`;
 
   const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    max_completion_tokens: 3500, // raised from 2200 — input already runs ~7-8k tokens (full article text), keeps total under Groq's 12,000 TPM free-tier cap
+    model: MODELS.WRITER,
+    max_completion_tokens: 2000, // raised from 2200 — input already runs ~7-8k tokens (full article text), keeps total under Groq's 12,000 TPM free-tier cap
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },
       { role: 'user', content: prompt },

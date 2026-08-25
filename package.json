@@ -16,7 +16,8 @@
     "test:commentary": "ts-node src/index.ts --commentary",
     "test:explainer": "ts-node src/index.ts --explainer",
     "test:shapes": "ts-node src/scripts/test-shapes.ts",
-    "heartbeat": "ts-node src/scripts/heartbeat.ts"
+    "heartbeat": "ts-node src/scripts/heartbeat.ts",
+    "models": "node -e \"require(\"dotenv\").config();fetch(\"https://api.groq.com/openai/v1/models\",{headers:{Authorization:\"Bearer \"+process.env.GROQ_API_KEY}}).then(r=>r.json()).then(j=>j.data.map(m=>m.id).sort().forEach(i=>console.log(i)))\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.20.0",

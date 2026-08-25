@@ -1,3 +1,4 @@
+import { MODELS } from '../llm/models';
 import Groq from 'groq-sdk';
 import { getLinkedInRetryVoiceContext } from './characterCard';
 
@@ -76,7 +77,7 @@ export async function expandLinkedInIfShort(
   try {
     const response = await client.chat.completions.create({
       // Cheap model: expanding an existing draft is repair, not authorship. See qualityGate.ts.
-      model: 'llama-3.1-8b-instant',
+      model: MODELS.REPAIR,
       max_completion_tokens: 700,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },

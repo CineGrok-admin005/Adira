@@ -1,3 +1,4 @@
+import { MODELS } from '../llm/models';
 import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -142,7 +143,7 @@ EMOTIONAL ANGLE: [felt seen / learned something / want to act / surprised]
 SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line]`;
 
   const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+    model: MODELS.WRITER,
     max_completion_tokens: 3000,
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },

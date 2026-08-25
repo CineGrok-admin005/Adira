@@ -1,3 +1,4 @@
+import { MODELS } from '../llm/models';
 import Groq from 'groq-sdk';
 import { getLinkedInRetryVoiceContext } from './characterCard';
 import { findBannedPhrases, countQuestions, countHashtags } from './bannedPhrases';
@@ -57,6 +58,23 @@ export function findUnsourcedNumbers(post: string, source: string): string[] {
   return [...unsourced];
 }
 
+// LinkedIn renders no markdown. A post containing **bold** or *italics* publishes with the
+// asterisks visible — observed 2026-08-25 on the first clean post ("**Brahmastra 2**").
+// Strip emphasis, keep the words. Bullet markers at line start are left alone: those are
+// real formatting the model uses deliberately.
+export function stripMarkdown(text: string): string {
+  return text
+    .replace(/\*\*\*(.+?)\*\*\*/gs, '$1')
+    .replace(/\*\*(.+?)\*\*/gs, '$1')
+    // Italic: *word* preceded by start/space/open-bracket. The (?!\s) after the opening
+    // asterisk is what protects real bullet lines ("* an item"), which never have a
+    // non-space immediately after the marker.
+    .replace(/(^|[\s(\[])\*(?!\s)([^*\n]+?)(?<!\s)\*(?=[\s.,;:!?)\]]|$)/gm, '$1$2')
+    .replace(/(^|[\s(\[])_(?!\s)([^_\n]+?)(?<!\s)_(?=[\s.,;:!?)\]]|$)/gm, '$1$2')
+    .replace(/^\s*#{1,6}\s+/gm, '')
+    .replace(/`([^`]+)`/g, '$1');
+}
+
 function inspect(text: string): string[] {
   const violations: string[] = [];
   const banned = findBannedPhrases(text);
@@ -71,7 +89,7 @@ export async function enforceLinkedInQuality(
   text: string,
   storyContext: string,
 ): Promise<QualityResult> {
-  const capped = capHashtags(text);
+  const capped = capHashtags(stripMarkdown(text));
 
   // Unsourced figures are a HARD reject — no rewrite. A rewrite would just launder the
   // invented number into different wording; the only safe response is to publish nothing.
@@ -97,7 +115,7 @@ export async function enforceLinkedInQuality(
       // Cheap model on purpose: this is "remove a banned phrase, cut a question" — mechanical
       // repair, not writing. 70B is reserved for the post itself. Saves ~3-4k tokens per
       // retry against the 100k/day free-tier cap, and returns faster.
-      model: 'llama-3.1-8b-instant',
+      model: MODELS.REPAIR,
       max_completion_tokens: 900,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },
