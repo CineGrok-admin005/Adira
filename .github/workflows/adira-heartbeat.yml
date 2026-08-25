@@ -1,0 +1,49 @@
+name: ADIRA — Heartbeat (daily health report)
+
+# WHY THIS EXISTS
+# ADIRA stopped posting on 2026-08-11 and nobody knew until 2026-08-25. Nothing had
+# failed visibly: no error, no failed row, no alert. The scheduled workflows simply
+# stopped running, and a system whose only signal is "a post appeared" cannot tell that
+# apart from a quiet news week.
+#
+# This reports EVERY DAY whether healthy or not, so the ABSENCE of a message is itself
+# the alarm. If these stop arriving, the scheduler is dead — and you know in a day.
+#
+# Kept deliberately tiny: Supabase + Telegram only, no LLM, no images, no news APIs.
+# It has to be the last thing standing, so it depends on as little as possible.
+#
+# It also keeps the repository active. GitHub disables scheduled workflows in repos with
+# no activity, which is a prime suspect for the fourteen-day silence.
+
+on:
+  schedule:
+    - cron: '13 4 * * *'   # ~9:43 AM IST — after the morning slot, before midday
+  workflow_dispatch:
+
+concurrency:
+  group: adira-heartbeat
+  cancel-in-progress: true
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Report ADIRA health
+        run: npx ts-node src/scripts/heartbeat.ts
+        env:
+          SUPABASE_URL:              ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY:         ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TELEGRAM_BOT_TOKEN:        ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:          ${{ secrets.TELEGRAM_CHAT_ID }}

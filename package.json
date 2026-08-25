@@ -15,7 +15,8 @@
     "introduce": "ts-node src/index.ts --introduce",
     "test:commentary": "ts-node src/index.ts --commentary",
     "test:explainer": "ts-node src/index.ts --explainer",
-    "test:shapes": "ts-node src/scripts/test-shapes.ts"
+    "test:shapes": "ts-node src/scripts/test-shapes.ts",
+    "heartbeat": "ts-node src/scripts/heartbeat.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.20.0",
