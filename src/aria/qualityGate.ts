@@ -1,4 +1,4 @@
-import { MODELS } from '../llm/models';
+import { resolveModels } from '../llm/models';
 import Groq from 'groq-sdk';
 import { getLinkedInRetryVoiceContext } from './characterCard';
 import { findBannedPhrases, countQuestions, countHashtags } from './bannedPhrases';
@@ -115,7 +115,7 @@ export async function enforceLinkedInQuality(
       // Cheap model on purpose: this is "remove a banned phrase, cut a question" — mechanical
       // repair, not writing. 70B is reserved for the post itself. Saves ~3-4k tokens per
       // retry against the 100k/day free-tier cap, and returns faster.
-      model: MODELS.REPAIR,
+      model: (await resolveModels()).repair,
       max_completion_tokens: 900,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },

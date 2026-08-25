@@ -1,4 +1,4 @@
-import { MODELS } from '../llm/models';
+import { resolveModels } from '../llm/models';
 import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -223,7 +223,7 @@ EMOTIONAL ANGLE: [what feeling should this carousel leave — felt seen / learne
 SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest version of the point]`;
 
   const response = await groq.chat.completions.create({
-    model: MODELS.WRITER,
+    model: (await resolveModels()).writer,
     max_completion_tokens: 2000, // raised from 2200 — input already runs ~7-8k tokens (full article text), keeps total under Groq's 12,000 TPM free-tier cap
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },
