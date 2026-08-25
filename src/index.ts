@@ -214,7 +214,7 @@ export async function runGrowthAgent(dryRun = false): Promise<void> {
       try { await postToTwitter(posts.twitter); }
       catch (err) { console.error('❌ Twitter:', err instanceof Error ? err.message : err); }
       try { await postToLinkedIn(posts.linkedin, posts.imageBuffer); }
-      catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
+      catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); await notifyFailure('LinkedIn publish FAILED — the row will still say posted', err); }
 
       if (backlogId) {
         const { markBacklogItemPosted } = await import('./supabase/queue');
@@ -354,7 +354,7 @@ export async function runCommentaryAgent(): Promise<void> {
       // Twitter is intentionally NOT auto-posted: tweets are now written manually
       // from the TWEET BRIEF via the Tweets Claude project (X API also costs money).
       try { await postToLinkedIn(post.linkedin, post.imageBuffer); }
-      catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
+      catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); await notifyFailure('LinkedIn publish FAILED — the row will still say posted', err); }
     }
 
     // Mark story as posted — prevents same story appearing at next scheduled run
@@ -500,7 +500,7 @@ export async function runExplainerAgent(): Promise<void> {
     if (AUTO_POST) {
       console.log('🚀 AUTO_POST=true — posting explainer to LinkedIn...');
       try { await postToLinkedIn(post.linkedin, post.imageBuffer); }
-      catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); }
+      catch (err) { console.error('❌ LinkedIn:', err instanceof Error ? err.message : err); await notifyFailure('LinkedIn publish FAILED — the row will still say posted', err); }
     }
 
     console.log('✅ Type 3 explainer completed!');
