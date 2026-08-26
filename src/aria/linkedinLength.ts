@@ -1,4 +1,4 @@
-import { resolveModels } from '../llm/models';
+import { resolveModels, reasoningParamsFor } from '../llm/models';
 import Groq from 'groq-sdk';
 import { getLinkedInRetryVoiceContext } from './characterCard';
 
@@ -75,13 +75,11 @@ export async function expandLinkedInIfShort(
   console.log(`   ⚠️  LinkedIn draft is ${originalLength} chars (declared ${declaredTarget === 'UNKNOWN' ? 'no length tag' : declaredTarget}) — retrying with an expansion request...`);
 
   try {
+    const model = (await resolveModels()).repair;
     const response = await client.chat.completions.create({
       // Cheap model: expanding an existing draft is repair, not authorship. See qualityGate.ts.
-      model: (await resolveModels()).repair,
-      // Reasoning-model tax: gpt-oss models bill chain-of-thought against
-      // max_completion_tokens before the visible answer — see generateCommentary.ts.
-      reasoning_effort: 'low',
-      reasoning_format: 'hidden',
+      model,
+      ...reasoningParamsFor(model),
       max_completion_tokens: 700,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },

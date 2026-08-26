@@ -29,6 +29,30 @@ export const TPM_BUDGET = 8_000;
 
 export interface ResolvedModels { writer: string; repair: string }
 
+// Every reasoning model on this key uses a DIFFERENT parameter shape, discovered the hard
+// way on 2026-08-26: openai/gpt-oss-* requires reasoning_effort in {low,medium,high} and
+// rejects 'none' outright; qwen/qwen3.6-27b requires {none,default} and rejects 'low'. A
+// hardcoded 'low' worked while resolveModels() picked gpt-oss-120b, but would have thrown a
+// 400 the moment the self-healing fallback ever routed to qwen — the exact situation this
+// fallback exists for. Every model resolveModels() can hand back must be covered here.
+//
+// gpt-oss without these params still burns real completion budget on hidden reasoning (a
+// trivial 2-sentence request used 28 reasoning tokens by default) — low+hidden keeps that
+// budget for the actual post. qwen with effort='none' skips reasoning entirely; it does not
+// need reasoning_format (untested and not required to get clean output).
+export function reasoningParamsFor(model: string): Record<string, string> {
+  if (model.startsWith('openai/gpt-oss')) {
+    return { reasoning_effort: 'low', reasoning_format: 'hidden' };
+  }
+  if (model.startsWith('qwen/')) {
+    return { reasoning_effort: 'none' };
+  }
+  // Unknown family (e.g. groq/compound, allam-2-7b if PREFERENCES ever grows to include
+  // them) — omit reasoning params entirely rather than guess a value that 400s.
+  return {};
+}
+
+
 let cached: ResolvedModels | null = null;
 
 async function listAvailable(): Promise<string[]> {

@@ -1,4 +1,4 @@
-import { resolveModels, fitToBudget, TPM_BUDGET } from '../llm/models';
+import { resolveModels, reasoningParamsFor, fitToBudget, TPM_BUDGET } from '../llm/models';
 import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -211,15 +211,10 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
 
   const prompt = buildPrompt(storyList);
 
+  const model = (await resolveModels()).writer;
   const response = await groq.chat.completions.create({
-    model: (await resolveModels()).writer,
-    // openai/gpt-oss-120b is a REASONING model: its chain-of-thought is billed against
-    // max_completion_tokens BEFORE the visible answer. Observed 2026-08-26: with reasoning
-    // left on, a 1,800-token budget was consumed entirely by reasoning and finish_reason
-    // came back "length" with no [LINKEDIN]/[INSTAGRAM] text at all. hidden+low keeps the
-    // full budget for the post itself.
-    reasoning_effort: 'low',
-    reasoning_format: 'hidden',
+    model,
+    ...reasoningParamsFor(model),
     max_completion_tokens: MAX_OUTPUT_TOKENS,
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },

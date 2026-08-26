@@ -36,7 +36,7 @@ const SOFT_SKIP = [
   // back; "first-time director opens up on her ₹5 lakh debut" is rescued by the debut boost.
   // Deliberately narrower than SOFT_PENALTY below: "says" and "shares" stay a nudge, not a
   // drop, because they appear in ordinary industry reporting too.
-  /\b(on (his|her) (journey|career|struggle|success)|looks? back|recalls?|reflects? on|reminisces|success story|rise to fame)\b/i,
+  /\b(on (his|her) (journey|career|struggle|success)|looks? back|recalls?|reflects? on|reminisces|success story|rise to fame|\d+\s*years? of|anniversary|reunion|revisit(ing)?|candid (chat|conversation)|throwback)\b/i,
   // The YouTube channels post in Hindi, so English-only patterns miss half the noise.
   // (Largely moot once YouTube is dropped as a source, but free to keep for Hindi headlines.)
   /(स्क्रीन|कलेक्शन|बॉक्स\s*ऑफिस|रिकॉर्ड|कमाई|टूटेगा)/,
@@ -55,7 +55,6 @@ const BOOST = [
   /\b(independent|indie|low[- ]?budget|micro[- ]?budget|no[- ]?budget|shoestring|self[- ]?fund|crowdfund|made for (just |only )?[₹$])\b/i,
   /\b(first[- ]?time|debutant|student film|short film|regional cinema|small(er)? film|underdog|against the odds)\b/i,
   /\b(acqui(re|red|sition)|picked up|streaming rights|OTT rights|original (series|film))\b/i,
-  /\b(festival|MAMI|IFFI|IFFK|Cannes|Sundance|Berlinale|Venice|TIFF|Toronto)\b/i,
 ];
 
 // WEAK signals: good for RANKING, useless for RESCUE. "producer" appears in nearly every
@@ -63,6 +62,12 @@ const BOOST = [
 // on 2026-08-09, because SOFT_SKIP was redeemed by ANY boost. These now only move a story
 // up the order; they can never bring a dropped one back.
 const WEAK_BOOST = [
+  // A bare festival NAME is not itself news — it is often just where an interview or
+  // retrospective chat was filmed. "greenlit/commission/slate/lineup/selection/premiere"
+  // above already covers real festival programming decisions. Moved here 2026-08-26 after
+  // it rescued a 15th-anniversary retrospective chat ("On 15 Years Of Delhi Belly... Nilaya
+  // Monsoon Film Festival") that the anniversary pattern in SOFT_SKIP had correctly dropped.
+  /\b(festival|MAMI|IFFI|IFFK|Cannes|Sundance|Berlinale|Venice|TIFF|Toronto)\b/i,
   /\b(production house|studio|backed by|co[- ]?produce|producer)\b/i,
   /\b(casting call|open call|audition|submission|apply now)\b/i,
 ];
