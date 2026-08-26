@@ -116,6 +116,10 @@ export async function enforceLinkedInQuality(
       // repair, not writing. 70B is reserved for the post itself. Saves ~3-4k tokens per
       // retry against the 100k/day free-tier cap, and returns faster.
       model: (await resolveModels()).repair,
+      // Reasoning-model tax: gpt-oss models bill chain-of-thought against
+      // max_completion_tokens before the visible answer — see generateCommentary.ts.
+      reasoning_effort: 'low',
+      reasoning_format: 'hidden',
       max_completion_tokens: 900,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },

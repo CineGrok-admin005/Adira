@@ -78,6 +78,10 @@ export async function expandLinkedInIfShort(
     const response = await client.chat.completions.create({
       // Cheap model: expanding an existing draft is repair, not authorship. See qualityGate.ts.
       model: (await resolveModels()).repair,
+      // Reasoning-model tax: gpt-oss models bill chain-of-thought against
+      // max_completion_tokens before the visible answer — see generateCommentary.ts.
+      reasoning_effort: 'low',
+      reasoning_format: 'hidden',
       max_completion_tokens: 700,
       messages: [
         { role: 'system', content: getLinkedInRetryVoiceContext() },

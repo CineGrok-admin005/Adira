@@ -1,4 +1,4 @@
-import { resolveModels } from '../llm/models';
+import { resolveModels, fitToBudget, TPM_BUDGET } from '../llm/models';
 import Groq from 'groq-sdk';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -36,6 +36,7 @@ export async function generateCommentary(stories: VerifiedStory[], shapeOverride
   // Budget note: Groq free tier caps requests at 12,000 tokens/min (input + reserved output).
   // So we keep the candidate list lean and put the real depth (full article text) only on the
   // top few. This lands the request around ~7-8k tokens — comfortably under the cap.
+  const MAX_OUTPUT_TOKENS = 1800;
   const ARTICLE_STORIES = 1;   // full article body for the top candidate only
   const ARTICLE_CHARS = 500;   // chars of article body injected per story
 
@@ -68,9 +69,8 @@ Press coverage of the same story:
 ${coverage || '   • (no additional press detail)'}${fullReport}`;
     })
   );
-  const storyList = storyBlocks.join('\n\n');
 
-  const prompt = `${audienceContext(audience)}
+  const buildPrompt = (storyListArg: string) => `${audienceContext(audience)}
 
 ## YOUR MEMORY (recent posts — do not repeat these tones or openings)
 ${memory.instagram.length > 0 || memory.linkedin.length > 0 || memory.twitter.length > 0
@@ -83,7 +83,7 @@ ${memory.instagram.length > 0 || memory.linkedin.length > 0 || memory.twitter.le
 
 ## TODAY'S VERIFIED STORIES FROM INDIAN CINEMA
 
-${storyList}
+${storyListArg}
 
 ## GROUNDING — THE MOST IMPORTANT RULE
 Every concrete claim you write must come from the verified story you pick above — its title, "what the video itself says", its press coverage, or its "Full report" (the actual article text — your richest source of specific names, numbers and quotes; mine it for the concrete detail that makes a post un-generic). Never introduce a number, a slate, an announcement, a name, or an event that is not in that story. Do not reuse facts from the examples further down (they show tone only). If the story you picked does not give you enough specific detail to say something true and worth reading, write "NO_WORTHWHILE_STORY" instead of padding it with generic claims.
@@ -100,28 +100,8 @@ Pick the story where the coverage actually contains something concrete: a figure
 
 You are not the industry's analyst and you are not anyone's teacher. You are the one who went and checked. That is the whole value. A reader should finish knowing something they didn't know, not knowing what you think they should do about it.
 
-## WHAT ADIRA SOUNDS LIKE — study the SHAPE, never copy the facts
-⚠️ These examples illustrate TONE and STRUCTURE only. They are NOT today's story. Never reuse their facts, names, numbers, or events. Fill the shape with details from the story you actually picked above.
-
-BAD (do not write like this):
-"A powerful OST can make all the difference in a film. For emerging filmmakers, it's a reminder to pay attention to every detail of the cinematic experience."
-→ A blog post. Generic. No point of view. Could have been written by anyone about anything.
-
-GOOD is not a template — it is a set of tests your draft has to pass:
-→ It names a real person, film, number or decision from today's story in the first two lines.
-→ Someone who read the same story would still learn something from your angle on it.
-→ Swap in a different story and the post falls apart, because nothing in it is generic.
-→ It makes the reader feel the stakes rather than being told what the stakes are.
-
-BAD:
-"The Indian film industry is evolving. Emerging filmmakers should take note of these changes and adapt their strategies accordingly."
-→ Empty. Says nothing.
-
-GOOD, again as tests rather than a mould:
-→ The concrete thing that happened is stated flat, with its real number or name attached.
-→ It contains at least one fact a reader who saw the headline still would not know.
-→ Nothing in it could have been written before reading today's story.
-→ It never tells the reader what to do, feel, or learn.
+## THE SPECIFICITY GATE
+Before you finish: could this sentence have been written about a different person, film, or week? If yes, delete it and write the specific thing instead. Never invent a name, number or event not in the story you picked.
 
 ## YOUR TASK
 
@@ -181,12 +161,7 @@ Pick one: excited / thoughtful / reporting / serious / warm
 [IMAGE_PROMPT]
 ADIRA must look mid-reaction — not posing. She has something to say. Every field required.
 
-Choose EXPRESSION based on EMOTION:
-- excited → eyes: sparkling wide, brows: raised high, mouth: broad genuine smile, posture: leaning forward, hands: open gesturing
-- thoughtful → eyes: soft focused sideways, brows: slightly furrowed, mouth: pressed in consideration, posture: hand to chin
-- reporting → eyes: direct and interested, brows: engaged, mouth: slight smile mid-sentence, posture: upright, hands: notepad or mic
-- serious → eyes: intense gaze direct to camera, brows: furrowed gravitas, mouth: pressed determined, posture: rigid upright
-- warm → eyes: crinkled soft smile, brows: relaxed, mouth: genuine warm smile, posture: open relaxed
+Choose EXPRESSION to match EMOTION (eyes, brows, mouth, posture, hands — one short phrase each).
 
 POST CATEGORY: [Report / Verified Fact / Industry News]
 WHAT HAPPENED: [one sentence]
@@ -221,10 +196,31 @@ KEY DATA POINTS:
 EMOTIONAL ANGLE: [what feeling should this carousel leave — felt seen / learned something / want to act / surprised]
 
 SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest version of the point]`;
+  // Enforce the token budget at RUNTIME, not with hand-tuned constants. The prompt grows on
+  // its own as memory fills, and that is exactly what silently broke posting on 2026-08-13:
+  // constants sized for a 12,000 cap, memory creeping up daily, then one day it crossed.
+  const fitted = fitToBudget(
+    storyBlocks,
+    (kept) => ADIRA_SYSTEM_PROMPT + buildPrompt(kept.join('\n\n')),
+    MAX_OUTPUT_TOKENS,
+  );
+  if (fitted.dropped > 0) {
+    console.log(`   Dropped ${fitted.dropped} candidate(s) to fit the ${TPM_BUDGET}-token budget.`);
+  }
+  const storyList = fitted.kept.join('\n\n');
+
+  const prompt = buildPrompt(storyList);
 
   const response = await groq.chat.completions.create({
     model: (await resolveModels()).writer,
-    max_completion_tokens: 2000, // raised from 2200 — input already runs ~7-8k tokens (full article text), keeps total under Groq's 12,000 TPM free-tier cap
+    // openai/gpt-oss-120b is a REASONING model: its chain-of-thought is billed against
+    // max_completion_tokens BEFORE the visible answer. Observed 2026-08-26: with reasoning
+    // left on, a 1,800-token budget was consumed entirely by reasoning and finish_reason
+    // came back "length" with no [LINKEDIN]/[INSTAGRAM] text at all. hidden+low keeps the
+    // full budget for the post itself.
+    reasoning_effort: 'low',
+    reasoning_format: 'hidden',
+    max_completion_tokens: MAX_OUTPUT_TOKENS,
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },
       { role: 'user', content: prompt },

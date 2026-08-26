@@ -201,6 +201,10 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp, specific opening line — the sharpest v
 
   const response = await client.chat.completions.create({
     model: (await resolveModels()).writer,
+    // Reasoning-model tax: gpt-oss models bill chain-of-thought against
+    // max_completion_tokens before the visible answer — see generateCommentary.ts.
+    reasoning_effort: 'low',
+    reasoning_format: 'hidden',
     max_completion_tokens: 4500, // raised from 2500 — input is ~5-6.5k tokens, keeps total under Groq's 12,000 TPM free-tier cap
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },

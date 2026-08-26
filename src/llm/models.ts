@@ -90,3 +90,38 @@ export async function resolveModels(): Promise<ResolvedModels> {
 
   return cached;
 }
+
+// Rough token estimate. Deliberately conservative — Devanagari and punctuation tokenise
+// worse than plain English, so we assume ~3 chars/token rather than the usual ~4.
+export function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 3);
+}
+
+/**
+ * Drop items from the tail of a list until the whole request is estimated to fit.
+ *
+ * This exists because hand-tuned constants already failed once: the prompt was sized to
+ * fit 12,000 TPM, then adira_memory started filling up, the prompt grew a little every
+ * day, and on 2026-08-13 it crossed the line and posting stopped for four days before the
+ * model was retired on top of it. Anything that GROWS over time will do that again.
+ *
+ * So the budget is enforced at runtime rather than assumed at design time.
+ */
+export function fitToBudget<T>(
+  items: T[],
+  render: (kept: T[]) => string,
+  reservedOutputTokens: number,
+  budget = TPM_BUDGET,
+  minItems = 1,
+): { kept: T[]; estimated: number; dropped: number } {
+  // 2026-08-26: the char/3 heuristic landed only 23 tokens over budget on real content
+  // (numbers and punctuation tokenise worse than prose). A fixed safety margin is cheaper
+  // and more robust than re-tuning the char/token ratio for every kind of text we might see.
+  const SAFETY_MARGIN = 400;
+  const ceiling = budget - reservedOutputTokens - SAFETY_MARGIN;
+  let kept = [...items];
+  while (kept.length > minItems && estimateTokens(render(kept)) > ceiling) {
+    kept.pop();
+  }
+  return { kept, estimated: estimateTokens(render(kept)), dropped: items.length - kept.length };
+}

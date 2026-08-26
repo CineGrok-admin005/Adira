@@ -144,6 +144,10 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line]`;
 
   const response = await groq.chat.completions.create({
     model: (await resolveModels()).writer,
+    // Reasoning-model tax: gpt-oss models bill chain-of-thought against
+    // max_completion_tokens before the visible answer — see generateCommentary.ts.
+    reasoning_effort: 'low',
+    reasoning_format: 'hidden',
     max_completion_tokens: 3000,
     messages: [
       { role: 'system', content: ADIRA_SYSTEM_PROMPT },
