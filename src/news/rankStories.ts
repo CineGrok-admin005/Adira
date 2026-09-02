@@ -8,6 +8,14 @@ import { VerifiedStory } from '../types';
 const HARD_SKIP = [
   /\b(song|music|lyric(al)?|audio launch|first single|jukebox|teaser|trailer|\bOST\b|promo)\b/i,
   /\b(out now|watch now|streaming now|in cinemas|in theat(re|er)s|book tickets)\b/i,
+  // Clip compilations are marketing assets wearing an editorial headline. Observed
+  // 2026-09-03: "Top 5 Moments Of This Week | The Traitors Season 2" survived every filter,
+  // won the ranking, and produced a post that recited 21 cast names and said nothing. There
+  // is no angle for someone still becoming in a promo reel — it is not ABOUT anyone, it
+  // exists to drive views to a title that already has a marketing budget.
+  /\btop\s*\d+\b[^|]*\b(moments?|scenes?|clips?|reasons?|things)\b/i,
+  /\bbest (of|moments?|scenes?)\b/i,
+  /\b(highlights?|bloopers?|deleted scenes?|full episode|watch the full|unseen footage)\b/i,
 ];
 
 // The real dividing line is not the TOPIC, it is the SUBJECT: "the ones becoming — not the

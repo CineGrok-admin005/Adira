@@ -3,7 +3,7 @@ dotenv.config();
 
 import { fetchYouTubeVideos } from '../news/fetchYouTube';
 import { fetchNews } from '../news/fetchNewsData';
-import { crossVerify } from '../news/crossVerify';
+import { storiesFromNews } from '../news/newsStories';
 import { generateCommentary } from '../news/generateCommentary';
 import { COMMENTARY_SHAPES } from '../aria/postShapes';
 import { serviceClient } from '../supabase/client';
@@ -31,11 +31,22 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function main(): Promise<void> {
   const [videos, news] = await Promise.all([fetchYouTubeVideos(), fetchNews()]);
   console.log(`YouTube: ${videos.length} video(s) | News: ${news.length} item(s)`);
+  // MIRROR PRODUCTION EXACTLY. This script existed to answer "what will ADIRA post?", and it
+  // was answering it about a different pipeline: it built its pool with crossVerify(videos,
+  // news) while runCommentaryAgent (src/index.ts) switched to storiesFromNews(news). So every
+  // sample reviewed here was drawn from YouTube clips that production would never see — which
+  // is how "Ikka Gets CURSED By The Traitors" came up for review on 2026-09-03 when the live
+  // news pool led with a director suing the CBFC. A preview that does not share the
+  // production pool is worse than no preview: it produces confident, wrong answers.
+  const stories: VerifiedStory[] = storiesFromNews(news);
+  console.log(`Story pool: ${stories.length} article(s) from named outlets`);
 
-  const crossVerified = crossVerify(videos, news);
-  const stories: VerifiedStory[] = crossVerified.length > 0
-    ? crossVerified
-    : videos.slice(0, 8).map((v) => ({ youtubeVideo: v, matchingNews: [], matchScore: 0 }));
+  // Same YouTube fallback as production, for when the news fetch itself fails.
+  if (stories.length === 0 && videos.length > 0) {
+    console.log(`   ⚠️  No news available — falling back to YouTube-only (${videos.length} videos)`);
+    stories.push(...videos.slice(0, 8).map((v) => ({ youtubeVideo: v, matchingNews: [], matchScore: 0 })));
+  }
+  console.log('');
   console.log(`Story pool: ${stories.length}\n`);
 
   const results: { shape: string; post: CommentaryPost }[] = [];

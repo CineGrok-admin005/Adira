@@ -45,6 +45,10 @@ export async function generateCommentary(stories: VerifiedStory[], shapeOverride
   const LEAD_CHARS = 2200;   // the story most likely to be picked — enough to write LONG from
   const OTHER_CHARS = 220;   // enough to choose between, not to write from
 
+  // The exact text handed to the model, keyed by story URL. The verification gates check
+  // against this and nothing else — see the storyContext note further down.
+  const reportedByUrl = new Map<string, string>();
+
   const storyBlocks = await Promise.all(
     candidates.map(async (s, i) => {
       // `youtubeVideo` carries the ARTICLE now — see newsStories.ts, the field name is a shim.
@@ -62,6 +66,7 @@ export async function generateCommentary(stories: VerifiedStory[], shapeOverride
         } catch { /* description stays the fallback */ }
       }
       reported = reported.slice(0, isLead ? LEAD_CHARS : OTHER_CHARS);
+      reportedByUrl.set(a.url, reported);
 
       return `[${i + 1}] ${a.channelTitle}: "${clean(a.title)}"
 URL: ${a.url}
@@ -296,8 +301,28 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
     return nouns.filter(n => n.length >= 3 && draftText.includes(n.toLowerCase())).length;
   };
   const groundingStory = candidates.reduce((best, s) => overlapFor(s) > overlapFor(best) ? s : best, candidates[0]);
+  // storyContext is what the verification gates check the finished post against, so it must
+  // contain the same text the model actually wrote from — not just headlines.
+  //
+  // It used to be title + outlet names only. That made both gates worse than useless: the
+  // quote check rejected "insensitivity to societal norms" as fabricated when it appears
+  // verbatim at offset 1392 of the article, and the number check could only ever validate
+  // figures that happened to be in a headline. A gate that rejects correct work teaches you
+  // to ignore it.
   const storyContext = groundingStory
-    ? `${groundingStory.youtubeVideo.title}\n${groundingStory.matchingNews.slice(0, 2).map(n => `${n.source || 'Press'}: ${n.title}`).join('\n')}`
+    ? [
+        groundingStory.youtubeVideo.title,
+        // The SAME string the prompt showed, not the raw description. These diverge whenever
+        // fetchArticleText succeeds: the model then writes from a 2,200-char article body
+        // while the gate only ever saw the ~200-char summary. On 2026-09-03 that rejected all
+        // three shapes in a row — "insensitive to societal norms", "we act in accordance with
+        // the law", and a third quote were each real, verbatim, and present in the body the
+        // model was handed. ADIRA would have published nothing that day because the gate was
+        // reading a different document than the writer. A gate must verify against the
+        // writer's own source, or it does not measure honesty — it measures a mismatch.
+        reportedByUrl.get(groundingStory.youtubeVideo.url) ?? groundingStory.youtubeVideo.description ?? '',
+        ...groundingStory.matchingNews.slice(0, 2).map(n => `${n.source || 'Press'}: ${n.title}\n${n.description ?? ''}`),
+      ].filter(Boolean).join('\n')
     : '';
 
   const lengthResult = await expandLinkedInIfShort(groq, linkedinBody, declaredLength, storyContext);

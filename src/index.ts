@@ -10,7 +10,6 @@ import { notifyFailure } from './telegram/notifyFailure';
 import { getIntroductionPosts } from './aria/introduce';
 import { fetchYouTubeVideos } from './news/fetchYouTube';
 import { fetchNews } from './news/fetchNewsData';
-import { crossVerify } from './news/crossVerify';
 import { storiesFromNews } from './news/newsStories';
 import { generateCommentary } from './news/generateCommentary';
 import { generateExplainer } from './explainer/generateExplainer';
@@ -562,7 +561,9 @@ export async function preWarmType2(): Promise<void> {
   try {
     console.log('⏰ Pre-warming Type 2 image...');
     const [videos, news] = await Promise.all([fetchYouTubeVideos(), fetchNews()]);
-    const stories = crossVerify(videos, news);
+    // Same news-first pool as runCommentaryAgent — a pre-warm that picks a different
+    // story than the real run caches an image for a post that never gets written.
+    const stories = storiesFromNews(news);
     if (stories.length === 0) { console.log('💤 No stories to pre-warm for.'); return; }
     const post = await generateCommentary(stories);
     if (!post) { console.log('💤 No commentary generated for pre-warm.'); return; }

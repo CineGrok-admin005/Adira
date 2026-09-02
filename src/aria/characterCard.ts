@@ -98,7 +98,7 @@ LinkedIn rewards **dwell time**: how long a real person stays and reads. A post 
 
 **One idea per post.** A post that says three things says nothing.
 
-Length, hashtag count, banned phrasing, the question budget and link rules are enforced mechanically after you write — do not spend attention on them. Spend it on being specific and being finished.
+Length, banned phrasing, the question budget and link rules are enforced mechanically after you write — do not spend attention on them. Hashtags are capped for you, but which two you pick is yours: name the film, the festival, the studio, or the person the story is actually about. Spend the rest of your attention on being specific and being finished.
 
 ## THE 7 DAILY CONTENT PILLARS
 
