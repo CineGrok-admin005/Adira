@@ -11,6 +11,7 @@ import { getIntroductionPosts } from './aria/introduce';
 import { fetchYouTubeVideos } from './news/fetchYouTube';
 import { fetchNews } from './news/fetchNewsData';
 import { crossVerify } from './news/crossVerify';
+import { storiesFromNews } from './news/newsStories';
 import { generateCommentary } from './news/generateCommentary';
 import { generateExplainer } from './explainer/generateExplainer';
 import { EXPLAINER_TOPICS } from './explainer/topics';
@@ -260,15 +261,18 @@ export async function runCommentaryAgent(): Promise<void> {
 
     console.log(`   YouTube: ${videos.length} video(s) | News: ${news.length} item(s)`);
 
-    const crossVerified = crossVerify(videos, news);
-    console.log(`   Cross-verified: ${crossVerified.length} story/stories confirmed`);
+    // News-first: a named publication reporting something is a better signal than a
+    // channel uploading a promo, and it needs no matching step — which removes the whole
+    // class of mismatch that had ADIRA declining coherent-looking but unrelated pairs.
+    // See src/news/newsStories.ts for the observed failures that motivated this.
+    const stories: VerifiedStory[] = storiesFromNews(news);
+    console.log(`   Story pool: ${stories.length} article(s) from named outlets`);
 
-    // Google News RSS is frequently blocked on cloud/CI runner IPs — fall back to YouTube-only
-    const stories: VerifiedStory[] = crossVerified.length > 0
-      ? crossVerified
-      : videos.slice(0, 8).map(v => ({ youtubeVideo: v, matchingNews: [], matchScore: 0 }));
-    if (crossVerified.length === 0 && videos.length > 0) {
-      console.log(`   📺 Google News unavailable — using YouTube-only (${stories.length} videos)`);
+    // YouTube is kept only as a fallback for when the news fetch itself fails, so a
+    // NewsData outage degrades to something rather than nothing.
+    if (stories.length === 0 && videos.length > 0) {
+      console.log(`   ⚠️  No news available — falling back to YouTube-only (${videos.length} videos)`);
+      stories.push(...videos.slice(0, 8).map(v => ({ youtubeVideo: v, matchingNews: [], matchScore: 0 })));
     }
 
     let post = null;
@@ -304,20 +308,44 @@ export async function runCommentaryAgent(): Promise<void> {
         console.log('💤 All organic stories already posted today. Checking backlog...');
       } else {
         console.log('✍️  ADIRA is writing commentary...');
-        post = await generateCommentary(freshStories);
+        // Work down the ranked pool instead of giving up after one attempt.
+        //
+        // Measured 2026-09-03: ~40% of scheduled slots published nothing even outside the
+        // Aug 12-25 outage. The cause was here — one attempt at the top 3 stories, and if
+        // the model returned NO_WORTHWHILE_STORY the only retry was a SINGLE backlog item
+        // that had just been rejected, which then failed the beat filter again inside
+        // generateCommentary. Stories 4 through 22 of a perfectly good ranked pool were
+        // never tried at all.
+        //
+        // Attempts are spaced because Groq free tier caps at 8,000 tokens/MINUTE and one
+        // generation costs ~6-7k — two back-to-back would 413. The workflow has a 15-minute
+        // timeout, so three spaced attempts fit comfortably.
+        const ATTEMPT_SIZE = 3;
+        const MAX_ATTEMPTS = 3;
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+          const slice = freshStories.slice(attempt * ATTEMPT_SIZE, (attempt + 1) * ATTEMPT_SIZE);
+          if (slice.length === 0) break;
 
-        if (post && post.sourceStory.originalIndex !== undefined) {
-          const usedIdx = post.sourceStory.originalIndex;
-          for (let i = 0; i < Math.min(freshStories.length, 5); i++) {
-            if (i !== usedIdx) {
-              await pushToBacklog('COMMENTARY', 5 - i, freshStories[i], 2);
-            }
+          if (attempt > 0) {
+            console.log(`   ⏳ Attempt ${attempt + 1}/${MAX_ATTEMPTS} — waiting 65s for the token window...`);
+            await new Promise(r => setTimeout(r, 65_000));
           }
-        } else if (!post && freshStories.length > 1) {
-          // Groq said NO_WORTHWHILE_STORY — still queue other stories so future runs can try
-          for (let i = 0; i < Math.min(freshStories.length, 5); i++) {
-            await pushToBacklog('COMMENTARY', 5 - i, freshStories[i], 2);
-          }
+
+          post = await generateCommentary(slice);
+          if (post) break;
+          console.log(`   ↻ No story in that batch cleared the gate — trying the next ${ATTEMPT_SIZE}.`);
+        }
+
+        // Queue the stories we did NOT use, so a later run can try them.
+        //
+        // Excluded by URL, not by index: with the multi-batch retry above, a post found on
+        // attempt 2 carries an originalIndex relative to its 3-story SLICE, not to
+        // freshStories — so index matching would queue the story we just published and skip
+        // an unused one. URL is stable across both.
+        const usedUrl = post?.sourceStory?.url;
+        for (let i = 0; i < Math.min(freshStories.length, 5); i++) {
+          if (freshStories[i].youtubeVideo.url === usedUrl) continue;
+          await pushToBacklog('COMMENTARY', 5 - i, freshStories[i], 2);
         }
       }
     }

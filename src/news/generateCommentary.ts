@@ -33,40 +33,39 @@ export async function generateCommentary(stories: VerifiedStory[], shapeOverride
   const pool = rankStories(stories);
   const candidates = pool.slice(0, 3);
 
-  // Budget note: Groq free tier caps requests at 12,000 tokens/min (input + reserved output).
-  // So we keep the candidate list lean and put the real depth (full article text) only on the
-  // top few. This lands the request around ~7-8k tokens — comfortably under the cap.
+  // Depth beats breadth. NewsData's `description` already carries substantial article text
+  // — 3,029 chars on the lead story observed 2026-09-03 — and we were truncating it to 200
+  // and then making a separate HTTP request for a body that frequently 403s. That starved
+  // the model: with one fact available it correctly declared SHORT every time, which is why
+  // posts collapsed from ~1,500 chars to ~450.
+  //
+  // So concentrate the same token budget rather than spreading it thin: give the lead story
+  // real depth to report from, and the others just enough to be judged against it.
   const MAX_OUTPUT_TOKENS = 1800;
-  const ARTICLE_STORIES = 1;   // full article body for the top candidate only
-  const ARTICLE_CHARS = 500;   // chars of article body injected per story
+  const LEAD_CHARS = 2200;   // the story most likely to be picked — enough to write LONG from
+  const OTHER_CHARS = 220;   // enough to choose between, not to write from
 
   const storyBlocks = await Promise.all(
     candidates.map(async (s, i) => {
-      const v = s.youtubeVideo;
-      const desc = clean(v.description).slice(0, 200);
-      const coverage = s.matchingNews
-        .slice(0, 1)
-        .map(n => {
-          const nd = clean(n.description).slice(0, 150);
-          return `   • ${n.source || 'Press'}: "${clean(n.title)}"${nd ? ` — ${nd}` : ''}`;
-        })
-        .join('\n');
+      // `youtubeVideo` carries the ARTICLE now — see newsStories.ts, the field name is a shim.
+      const a = s.youtubeVideo;
+      const isLead = i === 0;
 
-      // Fetch the lead press article's body for the top stories (skip YouTube links).
-      let fullReport = '';
-      if (i < ARTICLE_STORIES) {
-        const lead = s.matchingNews.find(n => n.link && !/youtube\.com|youtu\.be/i.test(n.link));
-        if (lead?.link) {
-          const body = await fetchArticleText(lead.link);
-          if (body) fullReport = `\nFull report (${lead.source || 'press'}): ${clean(body).slice(0, ARTICLE_CHARS)}`;
-        }
+      // Prefer whichever source actually has content. The description is free and already
+      // fetched; fetchArticleText costs an HTTP request and often fails (403s on several
+      // outlets), so only reach for it when the description is genuinely thin.
+      let reported = clean(a.description);
+      if (isLead && reported.length < LEAD_CHARS) {
+        try {
+          const body = clean((await fetchArticleText(a.url)) || '');
+          if (body.length > reported.length) reported = body;
+        } catch { /* description stays the fallback */ }
       }
+      reported = reported.slice(0, isLead ? LEAD_CHARS : OTHER_CHARS);
 
-      return `[${i + 1}] ${v.channelTitle} (YouTube): "${clean(v.title)}"
-URL: ${v.url}
-What the video itself says: ${desc || '(no description available)'}
-Press coverage of the same story:
-${coverage || '   • (no additional press detail)'}${fullReport}`;
+      return `[${i + 1}] ${a.channelTitle}: "${clean(a.title)}"
+URL: ${a.url}
+Reported: ${reported || '(no detail available)'}`;
     })
   );
 
@@ -86,7 +85,7 @@ ${memory.instagram.length > 0 || memory.linkedin.length > 0 || memory.twitter.le
 ${storyListArg}
 
 ## GROUNDING — THE MOST IMPORTANT RULE
-Every concrete claim you write must come from the verified story you pick above — its title, "what the video itself says", its press coverage, or its "Full report" (the actual article text — your richest source of specific names, numbers and quotes; mine it for the concrete detail that makes a post un-generic). Never introduce a number, a slate, an announcement, a name, or an event that is not in that story. Do not reuse facts from the examples further down (they show tone only). If the story you picked does not give you enough specific detail to say something true and worth reading, write "NO_WORTHWHILE_STORY" instead of padding it with generic claims.
+Every concrete claim you write must come from the story you pick above — its headline, its outlet, or the "Reported:" text (the actual article content, and your richest source of names, numbers, dates and quotes; mine it for the concrete detail that makes a post un-generic). Never introduce a number, a slate, an announcement, a name, or an event that is not in that story. If the story you picked does not give you enough specific detail to say something true and worth reading, write "NO_WORTHWHILE_STORY" instead of padding it with generic claims.
 
 ## SKIP THIS STORY IF:
 - It is a music release, song launch, or promotional trailer
@@ -122,10 +121,10 @@ Hashtags (max 3): always #CineGrok + the specific show or person discussed + 1 h
 [LINKEDIN_LENGTH: SHORT or LONG — state exactly which one you're about to write, then hit that target for real]
 Write to the LinkedIn playbook in your character (dwell time is the game). The goal is a post a real person reads to the end and replies to — not a 3-line news recap.
 
-DECIDE THE LENGTH FROM HOW MUCH THE SOURCES ACTUALLY GIVE YOU:
-- If the reporting yields one clean fact — a single number, one verified decision — declare SHORT and write 300-600 chars. A short accurate report beats a padded one.
-- If there is genuinely more to lay out — several facts, a disagreement between sources, a figure that needs context — declare LONG and write 1,300-2,000 chars.
-- Let the facts decide. If you have one fact, say it and stop; do not inflate it to reach a length.
+DECIDE THE LENGTH FROM HOW MUCH THE REPORTING ACTUALLY GIVES YOU:
+- The "Reported:" text on the lead story is usually substantial — several facts, names, dates, a sequence of events. When it is, declare LONG and write 1,300-2,000 chars. Walk through what happened, who is involved, what each side says, and what is still unresolved. This is the normal case; most real stories support it.
+- Only declare SHORT (300-600 chars) when the reporting genuinely yields one clean fact and nothing more. A short accurate report beats a padded one — but do not reach for SHORT to avoid the work of laying a real story out properly.
+- Never invent detail to reach a length. If you have three facts, use all three; if you have one, say it and stop.
 
 THE FIRST LINE (above the ~210-char "see more" fold) decides ~80% of reach. Lead with the hardest, most concrete thing you have — the number, the name, the decision — stated flat. Never open with a preamble, a question, or a scene-setting generality about the industry.
 
