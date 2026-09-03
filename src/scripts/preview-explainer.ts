@@ -29,7 +29,14 @@ async function main(): Promise<void> {
   const results: { shape: string; post: ExplainerPost }[] = [];
   const rejected: { shape: string; reason: string }[] = [];
 
-  for (const [i, shape] of EXPLAINER_SHAPES.entries()) {
+  // Optional shape filter: `npx ts-node src/scripts/preview-explainer.ts belief-correction`.
+  // Verifying one shape costs ~6k tokens against Groq's 100k/day; a full sweep costs ~18k, and
+  // the daily budget is shared with the posts that actually publish.
+  const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+  const shapes = only.length > 0 ? EXPLAINER_SHAPES.filter((sh) => only.includes(sh.name)) : EXPLAINER_SHAPES;
+  if (shapes.length === 0) throw new Error(`no shape matched ${only.join(', ')} — have: ${EXPLAINER_SHAPES.map((sh) => sh.name).join(', ')}`);
+
+  for (const [i, shape] of shapes.entries()) {
     if (i > 0) await wait(62_000);
     try {
       results.push({ shape: shape.name, post: await generateExplainer(seed, shape) });
@@ -67,7 +74,7 @@ async function main(): Promise<void> {
     console.log(`  link body : ${/https?:\/\//.test(li.replace(/https:\/\/cinegrok\.in/g, '')) ? 'YES' : 'no'}`);
   }
 
-  console.log(`\nPublished : ${results.length}/${EXPLAINER_SHAPES.length} shapes`);
+  console.log(`\nPublished : ${results.length}/${shapes.length} shapes`);
   for (const r of rejected) console.log(`  REJECTED  ${r.shape} — ${r.reason}`);
 
   const { error } = await serviceClient.from('adira_memory').delete().gte('created_at', startedAt);

@@ -125,6 +125,42 @@ export function ensureHashtags(text: string, source: string, max = MAX_HASHTAGS)
   return `${capped}\n\n${additions.join(' ')}`;
 }
 
+
+// Deterministic: keep the LAST question, delete earlier ones. No model call needed.
+//
+// The question budget was listed in characterCard.ts as "enforced mechanically after you
+// write", but nothing enforced it — only capHashtags was mechanical, and questions were left
+// to the prompt and a repair call. Both fail. On 2026-09-03 the belief-correction shape
+// produced 2 questions, the repair pass failed to fix it, and three successive attempts to
+// tighten the wording produced 2, then 4, then 5 — naming the rule in the prompt primes the
+// model to write the thing it forbids. The same trap as the hashtag instruction, in reverse.
+//
+// Deleting the earlier ones is the right repair rather than a lossy one: the character card
+// already calls scattered rhetorical questions a weakness ("a pile of vague questions reads
+// weak and generic"), and the shape spec puts the real question at the end. So the sentence
+// being removed is filler by the system's own definition.
+export function capQuestions(text: string, max = MAX_QUESTIONS): string {
+  const spans = [...text.matchAll(/[^.!?\n]*\?/g)];
+  if (spans.length <= max) return text;
+
+  // Keep the last `max` questions; drop the earlier ones.
+  const doomed = spans.slice(0, spans.length - max);
+  let out = text;
+  for (const s of doomed.reverse()) {
+    const start = s.index ?? 0;
+    out = out.slice(0, start) + out.slice(start + s[0].length);
+  }
+
+  return out
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n[ \t]*\n[ \t]*\n+/g, '\n\n')
+    .split('\n')
+    .map((l) => l.trimEnd())
+    .join('\n')
+    .trim();
+}
+
 // Every significant figure in the post must appear in the source. A reporter's whole value
 // is that she checked; on 2026-08-09 ADIRA published "50,000 screens overseas" — a quarter of
 // every cinema screen on earth — from a Hindi clickbait title that contained no number at all.
@@ -328,12 +364,64 @@ function inspect(text: string): string[] {
   return violations;
 }
 
+// Quotes attributed to a named person, for content that has NO source document to check
+// against (the Explainer teaches from a topic line, not an article).
+//
+// The blanket "every quote must appear in the source" rule cannot apply there, and applying it
+// anyway broke two of the three Explainer shapes on 2026-09-03. belief-correction was rejected
+// for writing "you need three lights to look professional." — a misconception nobody said,
+// quoted so it can be argued with. Quoting the belief IS that shape; the gate was rejecting
+// the assignment.
+//
+// What stays dangerous without a source is a quote put in a real person's mouth. So the test
+// narrows from "is this verbatim" to "is this attributed": a quote span sitting next to a
+// name or an attribution verb is unverifiable and therefore not publishable; a bare rhetorical
+// quote is a figure of speech and always was.
+const ATTRIBUTION_CUE = /\b(said|says|told|according to|argues|argued|noted|wrote|writes|explains|explained|adds|added|recalls|recalled|insists|claimed|claims)\b/i;
+
+export function findAttributedQuotes(post: string): string[] {
+  const found = new Set<string>();
+  const OPEN = '“';
+  const CLOSE = '”';
+  const pattern = new RegExp(`[${OPEN}"]([^${OPEN}${CLOSE}"\n]{${QUOTE_MIN_CHARS},400})[${CLOSE}"]`, 'g');
+
+  for (const m of post.matchAll(pattern)) {
+    const start = m.index ?? 0;
+    // Look at the text either side of the quote, not the quote itself — attribution lives
+    // outside the quotation marks.
+    const before = post.slice(Math.max(0, start - 90), start);
+    const after = post.slice(start + m[0].length, start + m[0].length + 90);
+    const nearby = `${before} ${after}`;
+
+    // A name counts as attribution only when it leads directly into the quote with no sentence
+    // boundary between them ("Ravi Varman put it plainly: ..."). Scanning the whole
+    // neighbourhood for any capitalised pair would fire on film titles and capitalised
+    // technique names — "Use the Rule of Thirds. Beginners think <quote>" is not attribution,
+    // and rejecting it would cost a day's post to guard against nothing.
+    const clause = before.split(/[.!?]\s/).pop() ?? '';
+    const nameLeadsIn = /\b[A-Z][a-z]{2,}\s+[A-Z][a-z]{2,}\b[^.!?]{0,30}$/.test(clause);
+    if (ATTRIBUTION_CUE.test(nearby) || nameLeadsIn) found.add(m[1].trim());
+  }
+  return [...found];
+}
+
+// 'reported' = there is a source article, so every quote, figure and date must appear in it.
+// 'taught'   = there is no source article, only a topic line. Checking generated teaching
+//              content against a topic label is a category error: it rejected "5600", "800"
+//              and "1600" — colour temperature and ISO — as unsourced figures, when the
+//              Explainer prompt explicitly invites common-knowledge specs like "24fps". What
+//              a gate cannot know, it must not adjudicate; the prompt governs numbers there
+//              ("vague-but-true beats specific-but-wrong"). Quotes and dates stay checked, by
+//              a rule that does not need a source: no attributed quotes, no specific dates.
+export type GroundingMode = 'reported' | 'taught';
+
 export async function enforceLinkedInQuality(
   client: Groq,
   text: string,
   storyContext: string,
+  mode: GroundingMode = 'reported',
 ): Promise<QualityResult> {
-  const capped = ensureHashtags(stripMarkdown(text), storyContext);
+  const capped = ensureHashtags(capQuestions(stripMarkdown(text)), storyContext);
 
   // Unsourced figures and quotes are HARD rejects — no rewrite. A rewrite would only
   // launder invented content into different wording; the safe response is to publish
@@ -349,7 +437,22 @@ export async function enforceLinkedInQuality(
     return { text: capped, passed: false, violations: v, rewritten: false };
   }
 
-  if (storyContext) {
+  if (mode === 'taught') {
+    // No source exists, so verbatim-matching is impossible. Attribution is still checkable,
+    // and a date in a craft explainer is always either irrelevant or invented.
+    const attributed = findAttributedQuotes(capped);
+    if (attributed.length > 0) {
+      const v = [`quote(s) attributed to a person with no source to verify them: ${attributed.map((q) => `"${q}"`).join(' | ')}`];
+      console.error(`   ❌ Quality gate: ${v[0]} — REJECTED, not rewritten.`);
+      return { text: capped, passed: false, violations: v, rewritten: false };
+    }
+    const taughtDates = findUnsourcedDates(capped, '');
+    if (taughtDates.length > 0) {
+      const v = [`specific date(s) in a post with no source: ${taughtDates.join(', ')}`];
+      console.error(`   ❌ Quality gate: ${v[0]} — REJECTED, not rewritten.`);
+      return { text: capped, passed: false, violations: v, rewritten: false };
+    }
+  } else if (storyContext) {
     const madeUpQuotes = findUnsourcedQuotes(capped, storyContext);
     if (madeUpQuotes.length > 0) {
       const v = [`quote(s) not found in the source: ${madeUpQuotes.map((q) => `"${q}"`).join(' | ')}`];
@@ -427,7 +530,7 @@ Output ONLY the rewritten post — no labels, no preamble, no quotes around it.`
       return { text: capped, passed: false, violations, rewritten: true };
     }
 
-    const finalText = ensureHashtags(rewritten, storyContext);
+    const finalText = ensureHashtags(capQuestions(rewritten), storyContext);
     const remaining = inspect(finalText);
 
     if (remaining.length === 0) {

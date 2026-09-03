@@ -51,7 +51,7 @@ export const EXPLAINER_SHAPES: PostShape[] = [
   },
   {
     name: 'belief-correction',
-    brief: `Open with what most beginners believe about this topic, then correct it with what is actually true. Spend the body on why the wrong version is so widespread and what it costs people who believe it. Close by asking what they were taught about this, and by whom.`,
+    brief: `Open with what most beginners believe about this topic, then correct it with what is actually true. Spend the body on why the wrong version is so widespread and what it costs people who believe it. Close by asking who taught them the version they believed.`,
   },
   {
     name: 'constraint-first',

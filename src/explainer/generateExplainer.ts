@@ -190,7 +190,8 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line]`;
   console.log(`   💼 LinkedIn: ${lengthResult.originalLength} chars (declared ${lengthResult.declaredTarget})${lengthResult.retried ? ` → retried → ${lengthResult.finalLength} chars` : ''}`);
 
   // See generateCommentary: enforced in code because the prompt-level ban demonstrably fails.
-  const quality = await enforceLinkedInQuality(groq, linkedinBody, seed.topic);
+  // 'taught': the Explainer writes from a topic line, not an article. See GroundingMode.
+  const quality = await enforceLinkedInQuality(groq, linkedinBody, seed.topic, 'taught');
   linkedinBody = quality.text;
   if (!quality.passed) {
     throw new Error(`generateExplainer: quality gate rejected the post — ${quality.violations.join(' | ')}`);
