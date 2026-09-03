@@ -29,6 +29,10 @@ const BANNED = [
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main(): Promise<void> {
+  // Anything written to adira_memory after this instant belongs to this preview, not to a
+  // real post — that is the only safe basis for cleaning up afterwards.
+  const startedAt = new Date().toISOString();
+
   const [videos, news] = await Promise.all([fetchYouTubeVideos(), fetchNews()]);
   console.log(`YouTube: ${videos.length} video(s) | News: ${news.length} item(s)`);
   // MIRROR PRODUCTION EXACTLY. This script existed to answer "what will ADIRA post?", and it
@@ -89,10 +93,14 @@ async function main(): Promise<void> {
 
   // These generations wrote memory rows but were never published. Leaving them would make the
   // real scheduled post steer away from openings no human has ever seen.
+  // Scoped to rows THIS run created. It used to delete every row in the table, which would
+  // have wiped the real post history the moment production had any — the anti-repetition
+  // system's entire memory, destroyed by a preview script. Nothing published here, so nothing
+  // published should be forgotten.
   const { error } = await serviceClient
     .from('adira_memory')
     .delete()
-    .neq('id', '00000000-0000-0000-0000-000000000000');
+    .gte('created_at', startedAt);
   const { data: after } = await serviceClient.from('adira_memory').select('id');
   console.log(`\nmemory cleaned: ${error ? 'FAILED — ' + error.message : `${after?.length ?? 0} rows remain`}`);
 }

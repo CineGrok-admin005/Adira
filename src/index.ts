@@ -13,7 +13,7 @@ import { fetchNews } from './news/fetchNewsData';
 import { storiesFromNews } from './news/newsStories';
 import { generateCommentary } from './news/generateCommentary';
 import { generateExplainer } from './explainer/generateExplainer';
-import { EXPLAINER_TOPICS } from './explainer/topics';
+import { pickExplainerSeed } from './explainer/pickSeed';
 import { generateAdiraImage } from './image/generateImage';
 import { saveImageCache, loadImageCache, clearImageCache, bufferToBase64, base64ToBuffer } from './image/imageCache';
 import { startScheduler } from './scheduler';
@@ -423,47 +423,6 @@ export async function runCommentaryAgent(): Promise<void> {
   }
 }
 
-// Picks the next Explainer topic: excludes the immediately-previous pillar and anything posted
-// in the last ~90 days; drops the pillar constraint, then falls back to least-recently-used
-// (never-used first), if the bank is exhausted under those constraints. Deterministic per IST
-// calendar day (not random per call) so a pre-warm run and the real run later that day always
-// pick the same topic — otherwise a cached pre-warmed image could mismatch the real post's topic.
-async function pickExplainerSeed(): Promise<{ pillar: ExplainerPillar; topic: string }> {
-  const { serviceClient } = await import('./supabase/client');
-  const { data: rows } = await serviceClient
-    .from('content_backlog')
-    .select('data, created_at')
-    .eq('type', 'EXPLAINER')
-    .eq('status', 'posted')
-    .order('created_at', { ascending: false })
-    .limit(200);
-
-  const posted = (rows || []) as { data: { pillar?: string; topic?: string }; created_at: string }[];
-  const lastPillar = posted[0]?.data?.pillar;
-  const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
-  const usedWithin90d = new Set(
-    posted.filter(r => new Date(r.created_at).getTime() >= ninetyDaysAgo).map(r => r.data?.topic).filter(Boolean)
-  );
-
-  let candidates = EXPLAINER_TOPICS.filter(t => !usedWithin90d.has(t.topic) && t.pillar !== lastPillar);
-  if (candidates.length === 0) candidates = EXPLAINER_TOPICS.filter(t => !usedWithin90d.has(t.topic));
-
-  if (candidates.length === 0) {
-    // Bank exhausted within 90 days for every topic — fall back to least-recently-used (never-used first)
-    const lastUsedAt = new Map<string, number>();
-    for (const r of posted) {
-      const topic = r.data?.topic;
-      if (topic && !lastUsedAt.has(topic)) lastUsedAt.set(topic, new Date(r.created_at).getTime());
-    }
-    candidates = [...EXPLAINER_TOPICS].sort((a, b) => (lastUsedAt.get(a.topic) ?? 0) - (lastUsedAt.get(b.topic) ?? 0));
-    return candidates[0];
-  }
-
-  const todayIST = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().split('T')[0];
-  let hash = 0;
-  for (const ch of todayIST) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
-  return candidates[hash % candidates.length];
-}
 
 export async function runExplainerAgent(): Promise<void> {
   try {
