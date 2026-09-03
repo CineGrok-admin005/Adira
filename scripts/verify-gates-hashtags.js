@@ -45,5 +45,19 @@ t('tags a name the post actually uses', tags(postAbout).includes('#PrimeVideoInd
 t('still lands exactly 2', tags(postAbout).length, 2);
 console.log('   chose:', tags(postAbout).join(' '));
 
+console.log('\n=== the Pakeezah regression: tags from the article body were junk ===');
+// The post is about Pakeezah at Festival Lumiere; the article body also carried an unrelated
+// title-case headline further down the page, which is where #HowMaliputMelodies came from.
+const BODY = 'The 4K restoration of Pakeezah premieres at Festival Lumiere in Lyon. ' +
+  'Film Heritage Foundation spent two years on it. How Mali Put Melodies Back On The Map. World news.';
+const POST = 'The 4K restoration of Pakeezah has landed at Festival Lumiere in Lyon, its world debut.';
+const chosen = tags(ensureHashtags(POST, BODY));
+console.log('   chose:', chosen.join(' '));
+t('no generic #World', chosen.includes('#World'), false);
+t('no headline fragment from elsewhere in the body',
+  chosen.some((x) => x.toLowerCase().includes('mali')), false);
+t('names the actual subject', chosen.includes('#Pakeezah'), true);
+t('still exactly 2', chosen.length, 2);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

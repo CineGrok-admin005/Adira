@@ -49,6 +49,10 @@ const TAG_STOPWORDS = new Set([
   'september', 'october', 'november', 'december',
   'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday',
   'india', 'indian', 'new', 'first', 'read', 'also', 'watch', 'here', 'what', 'why', 'how',
+  // Generic nouns make a tag that says nothing: #World and #Film could sit under any post.
+  'world', 'film', 'films', 'cinema', 'movie', 'movies', 'news', 'story', 'video', 'season',
+  'exclusive', 'review', 'trailer', 'update', 'report', 'interview', 'photos', 'more', 'now',
+  'when', 'where', 'who', 'which', 'these', 'those', 'over', 'about', 'into', 'out', 'put',
 ]);
 
 const ROLE_WORDS = new Set([
@@ -103,9 +107,25 @@ export function ensureHashtags(text: string, source: string, max = MAX_HASHTAGS)
   // a name that appears once in the source article and never in the post. The tag was
   // truthfully sourced and still wrong, because a hashtag is a claim about what the reader
   // is about to read. So: source-grounded AND post-present first, source-only second.
-  const inPost = (tag: string) => text.toLowerCase().includes(tag.slice(1).toLowerCase());
-  const fromSource = extractProperNounTags(source, max * 6);
-  const ranked = [...fromSource.filter(inPost), ...fromSource.filter((t) => !inPost(t)), '#CineGrok'];
+  // Candidates come from the POST first, then get validated against the source. Drawing them
+  // from the article body instead produced "#World" and "#HowMaliputMelodies" on 2026-09-03 —
+  // a generic noun and a title-case fragment of some unrelated headline further down the page.
+  // The post is the only text guaranteed to be about the subject; the source is what proves
+  // the name is real rather than something the model coined.
+  const bare = (t: string) => t.slice(1).toLowerCase();
+  const srcFlat = source.replace(/s+/g, '').toLowerCase();
+  const inSource = (tag: string) => srcFlat.includes(bare(tag));
+
+  const fromPost = extractProperNounTags(text, max * 6);
+  const fromSource = extractProperNounTags(source, max * 4);
+  // Every candidate must be present in the source. A post-derived name that the source does
+  // not contain is exactly the invented-name case the gates exist to catch, and a hashtag is
+  // the most quotable part of a post — it must never be the one unverified thing in it.
+  const ranked = [
+    ...fromPost.filter(inSource),   // the post's own subject, confirmed real
+    ...fromSource,                  // fallback: real, though not named in the post
+    '#CineGrok',
+  ];
 
   for (const tag of ranked) {
     if (additions.length + present.length >= max) break;
@@ -364,6 +384,36 @@ function inspect(text: string): string[] {
   return violations;
 }
 
+
+// Removes the quotation marks around a phrase that is neither in the source nor attributed to
+// anyone — leaving the words, dropping the claim that someone said them.
+//
+// Models use quotation marks for emphasis as well as for quoting. On 2026-09-03 a post was
+// rejected outright for "the universal language of Indian cinema's golden age." — nobody's
+// words, just a flourish the model put in quotes. Killing an otherwise sound post over
+// punctuation is the wrong trade, but so is publishing it as-is: a reader takes quoted text as
+// verbatim, so the honest repair is to stop presenting it as a quotation.
+//
+// The dangerous case is untouched. A quote that IS attributed to a named person and is NOT in
+// the source stays a hard reject — that is the fabricated-quote risk, and unquoting it would
+// launder a false attribution into a false assertion of fact.
+export function stripUnattributedUnsourcedQuotes(text: string, source: string): string {
+  const unsourced = new Set(findUnsourcedQuotes(text, source));
+  if (unsourced.size === 0) return text;
+
+  const attributed = new Set(findAttributedQuotes(text));
+  const OPEN = '“';
+  const CLOSE = '”';
+  const pattern = new RegExp(`[${OPEN}"]([^${OPEN}${CLOSE}"\n]{${QUOTE_MIN_CHARS},400})[${CLOSE}"]`, 'g');
+
+  return text.replace(pattern, (whole, inner: string) => {
+    const body = inner.trim();
+    if (!unsourced.has(body)) return whole;   // verbatim in the source — keep the quote marks
+    if (attributed.has(body)) return whole;   // attributed and unsourced — leave it to be rejected
+    return inner;
+  });
+}
+
 // Quotes attributed to a named person, for content that has NO source document to check
 // against (the Explainer teaches from a topic line, not an article).
 //
@@ -405,6 +455,49 @@ export function findAttributedQuotes(post: string): string[] {
   return [...found];
 }
 
+
+// One cheap, tightly-scoped call: delete these figures, change nothing else. Deliberately not
+// the general rewrite prompt — a broad "fix this post" invites the model to re-word around the
+// number and reintroduce it as a spelled-out year or a new invention. Returns null on any
+// failure so the caller falls through to rejection.
+async function removeFigures(
+  client: Groq,
+  text: string,
+  figures: string[],
+  storyContext: string,
+): Promise<string | null> {
+  try {
+    const model = (await resolveModels()).repair;
+    const response = await client.chat.completions.create({
+      model,
+      ...reasoningParamsFor(model),
+      max_completion_tokens: 900,
+      messages: [
+        {
+          role: 'user',
+          content: `The post below contains figures that do not appear in its source and must come out: ${figures.join(', ')}.
+
+Remove or rephrase ONLY the parts carrying those figures. Delete the claim entirely if it cannot stand without the number — do not substitute a different number, a spelled-out year ("nineteen seventy-two"), or a vague stand-in ("decades ago", "in the seventies"). Every other sentence must survive word for word.
+
+${storyContext ? `The source, for reference — anything here is fine to keep:\n${storyContext.slice(0, 1200)}\n\n` : ''}POST:
+"""
+${text}
+"""
+
+Output ONLY the corrected post. No labels, no preamble, no explanation.`,
+        },
+      ],
+    });
+
+    const choice = response.choices[0];
+    if (choice?.finish_reason === 'length') return null;
+    return choice?.message?.content?.trim() || null;
+  } catch (err) {
+    console.warn('   ⚠️  Figure-removal pass failed:', err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 // 'reported' = there is a source article, so every quote, figure and date must appear in it.
 // 'taught'   = there is no source article, only a topic line. Checking generated teaching
 //              content against a topic label is a category error: it rejected "5600", "800"
@@ -421,7 +514,7 @@ export async function enforceLinkedInQuality(
   storyContext: string,
   mode: GroundingMode = 'reported',
 ): Promise<QualityResult> {
-  const capped = ensureHashtags(capQuestions(stripMarkdown(text)), storyContext);
+  let capped = ensureHashtags(capQuestions(stripMarkdown(text)), storyContext);
 
   // Unsourced figures and quotes are HARD rejects — no rewrite. A rewrite would only
   // launder invented content into different wording; the safe response is to publish
@@ -453,6 +546,12 @@ export async function enforceLinkedInQuality(
       return { text: capped, passed: false, violations: v, rewritten: false };
     }
   } else if (storyContext) {
+    // Drop quotation marks from unsourced phrases nobody is credited with saying, so the post
+    // survives as prose. Anything still quoted after this is either verbatim in the source or
+    // attributed to a person — and an attributed quote that is not in the source is the one
+    // case that must never be laundered into a statement, so it falls through to the reject.
+    capped = stripUnattributedUnsourcedQuotes(capped, storyContext);
+
     const madeUpQuotes = findUnsourcedQuotes(capped, storyContext);
     if (madeUpQuotes.length > 0) {
       const v = [`quote(s) not found in the source: ${madeUpQuotes.map((q) => `"${q}"`).join(' | ')}`];
@@ -460,10 +559,42 @@ export async function enforceLinkedInQuality(
       return { text: capped, passed: false, violations: v, rewritten: false };
     }
 
-    const invented = findUnsourcedNumbers(capped, storyContext);
+    // Unsourced figures get ONE targeted removal pass before rejection — unlike quotes, which
+    // are rejected outright. The asymmetry is deliberate. Rewriting a fabricated quote launders
+    // it: the false attribution survives in different words and nothing can verify the result.
+    // Removing a figure is the opposite — it is checkable, because the test afterwards is
+    // simply "is that number still here, and did no new one appear".
+    //
+    // The distinction matters because the year exemption was removed on 2026-09-03 and three
+    // consecutive commentary runs then died on contextual years ("1972", "2024") the model had
+    // added as colour. Catching those is right; losing the whole post to them is not, when the
+    // fix is to delete four characters. A post that publishes minus an invented year beats an
+    // alert and silence.
+    let invented = findUnsourcedNumbers(capped, storyContext);
+    if (invented.length > 0) {
+      console.log(`   ⚠️  Quality gate: unsourced figure(s) ${invented.join(', ')} — requesting one removal pass...`);
+      const stripped = await removeFigures(client, capped, invented, storyContext);
+      if (!stripped) console.warn('   ⚠️  Removal pass returned nothing (truncated or errored).');
+      if (stripped) {
+        const before = new Set(invented);
+        const after = findUnsourcedNumbers(stripped, storyContext);
+        // Accept only if every flagged figure is gone AND the pass introduced no new one.
+        if (after.length === 0 && stripped.length > capped.length * 0.7) {
+          console.log('   ✅ Quality gate: unsourced figures removed.');
+          capped = stripped;
+          invented = [];
+        } else if (after.some((n) => !before.has(n))) {
+          console.warn(`   ⚠️  Removal pass invented new figures (${after.filter((n) => !before.has(n)).join(', ')}) — discarding it.`);
+        } else if (stripped.length <= capped.length * 0.7) {
+          console.warn(`   ⚠️  Removal pass gutted the post (${capped.length} → ${stripped.length} chars) — discarding it.`);
+        } else {
+          console.warn(`   ⚠️  Removal pass left ${after.join(', ')} in place.`);
+        }
+      }
+    }
     if (invented.length > 0) {
       const v = [`unsourced figure(s) not present in the source: ${invented.join(', ')}`];
-      console.error(`   ❌ Quality gate: ${v[0]} — REJECTED, not rewritten.`);
+      console.error(`   ❌ Quality gate: ${v[0]} — REJECTED after a removal pass.`);
       return { text: capped, passed: false, violations: v, rewritten: false };
     }
   }

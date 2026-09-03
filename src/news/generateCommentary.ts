@@ -325,6 +325,9 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
       ].filter(Boolean).join('\n')
     : '';
 
+  // Kept so a failed gate can fall back to it — see below.
+  const preExpansion = linkedinBody;
+
   const lengthResult = await expandLinkedInIfShort(groq, linkedinBody, declaredLength, storyContext);
   linkedinBody = lengthResult.text;
   console.log(`   💼 LinkedIn: ${lengthResult.originalLength} chars (declared ${lengthResult.declaredTarget})${lengthResult.retried ? ` → retried → ${lengthResult.finalLength} chars` : ''}`);
@@ -332,7 +335,23 @@ SUGGESTED HOOK FOR SLIDE 1: [one sharp specific opening line — the sharpest ve
   // Banned phrases and the question budget are enforced HERE, not in the prompt. The prompt
   // has banned "journey" since day one and it still shipped. One rewrite, then rejection —
   // publishing nothing beats publishing filler, which costs reach on everything after it.
-  const quality = await enforceLinkedInQuality(groq, linkedinBody, storyContext);
+  let quality = await enforceLinkedInQuality(groq, linkedinBody, storyContext);
+
+  // The expansion pass is told to add depth using only facts already present, and it does not
+  // always obey: asked to lengthen a clean 1,184-char draft on 2026-09-03 it padded with "1972",
+  // a year absent from the article, and the whole post was rejected for a fabrication that the
+  // original draft never contained. Losing a truthful post because the retry spoiled it is the
+  // worst outcome available — shorter and honest beats silent. So when expansion is what broke
+  // it, fall back to the pre-expansion draft and let that face the gate on its own.
+  if (!quality.passed && lengthResult.retried && preExpansion !== lengthResult.text) {
+    console.warn('   ↩️  Expansion introduced the violation — retrying the gate on the pre-expansion draft.');
+    const fallback = await enforceLinkedInQuality(groq, preExpansion, storyContext);
+    if (fallback.passed) {
+      console.log(`   ✅ Pre-expansion draft is clean (${fallback.text.length} chars) — publishing that instead.`);
+      quality = fallback;
+    }
+  }
+
   linkedinBody = quality.text;
   if (!quality.passed) {
     console.error(`❌ generateCommentary: quality gate rejected the post — ${quality.violations.join(' | ')}`);

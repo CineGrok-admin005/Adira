@@ -53,8 +53,21 @@ async function main(): Promise<void> {
   console.log('');
   console.log(`Story pool: ${stories.length}\n`);
 
+  // ONE DIFFERENCE FROM PRODUCTION, AND IT IS DELIBERATE. runCommentaryAgent slices the pool
+  // into batches of 3 and calls generateCommentary up to 3 times, so a batch the gates reject
+  // is followed by another batch 65s later. This script tries the top 3 once per shape, on
+  // purpose: it exists to judge the writing on the day's best story, not to measure uptime.
+  // So a rejection here does NOT mean production would publish nothing — it means that story
+  // did not survive, and production would move on to the next three.
   const results: { shape: string; post: CommentaryPost }[] = [];
-  for (const [i, shape] of COMMENTARY_SHAPES.entries()) {
+  // Optional shape filter: `npx ts-node src/scripts/preview-post.ts checked-it`. Verifying one
+  // shape costs ~7k tokens against Groq's 100k/day, a budget shared with the posts that
+  // actually publish — so a targeted re-check after a shared-code change need not cost a sweep.
+  const only = process.argv.slice(2).filter((a) => !a.startsWith('-'));
+  const shapes = only.length > 0 ? COMMENTARY_SHAPES.filter((sh) => only.includes(sh.name)) : COMMENTARY_SHAPES;
+  if (shapes.length === 0) throw new Error(`no shape matched ${only.join(', ')} — have: ${COMMENTARY_SHAPES.map((sh) => sh.name).join(', ')}`);
+
+  for (const [i, shape] of shapes.entries()) {
     if (i > 0) await wait(62_000);
     const post = await generateCommentary(stories, shape);
     if (post) results.push({ shape: shape.name, post });
